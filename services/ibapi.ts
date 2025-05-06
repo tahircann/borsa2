@@ -719,7 +719,7 @@ const generateMockPerformanceData = (days: number): {
   };
 };
 
-export const getPerformance = async (period: string): Promise<{
+export const getPerformance = async (period: string = '1m'): Promise<{
   data: { date: string; value: number }[];
   startValue: number;
   endValue: number;
@@ -732,95 +732,25 @@ export const getPerformance = async (period: string): Promise<{
       console.log('API bağlı, gerçek performans verisi alınmaya çalışılıyor...');
       console.log('Kullanılan hesap ID:', IB_ACCOUNT_ID);
       
-      // Flask backend'den hesap geçmişini alma
+      // Flask backend'den performans verisi alma
       try {
         console.log('Performans verisi için Flask backend deneniyor');
         const response = await apiClient.get('', {
           params: {
             target: 'flask',
-            path: `performance?period=${period}&account=${IB_ACCOUNT_ID}`
+            path: `performance?period=${period}`
           },
           validateStatus: () => true,
         });
         
         if (response.status === 200 && response.data) {
-          console.log('Flask backend\'den performans verisi alındı');
+          console.log('Flask backend\'den performans verisi alındı', response.data);
           return response.data;
+        } else {
+          console.warn('Flask backend yanıt verdi, ancak geçerli veri yok:', response.status, response.data);
         }
       } catch (flaskError) {
         console.error('Flask backend\'den veri alınamadı:', flaskError);
-      }
-      
-      // IB Gateway verisi üzerinden performans hesaplama
-      try {
-        // IB Gateway API'si doğrudan performans geçmişi sağlamıyor
-        // Mevcut portföy değerini alıp basit bir grafik oluşturalım
-        const summaryResponse = await apiClient.get('', {
-          params: {
-            target: 'ibgateway',
-            path: `portfolio/${IB_ACCOUNT_ID}/summary`
-          },
-          validateStatus: () => true,
-        });
-        
-        if (summaryResponse.status === 200) {
-          const summary = summaryResponse.data;
-          console.log('Performans hesaplaması için hesap özeti alındı');
-          
-          // Periyoda göre gün sayısını belirle
-          let days = 30;
-          switch (period) {
-            case '1w': days = 7; break;
-            case '1m': days = 30; break;
-            case '3m': days = 90; break;
-            case '6m': days = 180; break;
-            case '1y': days = 365; break;
-            case 'all': days = 730; break;
-          }
-          
-          // Özetten mevcut portföy değerini çıkar
-          let currentValue = 0;
-          if (summary.totalnetvalue && summary.totalnetvalue.amount) {
-            currentValue = Number(summary.totalnetvalue.amount);
-          } else if (summary.netvalue && summary.netvalue.amount) {
-            currentValue = Number(summary.netvalue.amount);
-          }
-          
-          if (currentValue > 0) {
-            // Mevcut değeri kullanarak yarı-gerçekçi bir grafik oluştur
-            let startValue = currentValue * (1 - (Math.random() * 0.1 + 0.05)); // Mevcut değerden %5-15 daha az
-            const data = [];
-            
-            for (let i = 0; i < days; i++) {
-              const date = new Date();
-              date.setDate(date.getDate() - (days - i));
-              
-              // Mevcut değere doğru ilerleyen bir değer üret
-              const progress = i / (days - 1);
-              const randomFactor = 1 + ((Math.random() - 0.5) * 0.01); // Küçük rastgele varyasyon
-              const value = startValue + (currentValue - startValue) * progress * randomFactor;
-              
-              data.push({
-                date: date.toISOString().split('T')[0],
-                value: Number(value.toFixed(2)),
-              });
-            }
-            
-            // Son değerin mevcut portföy değerine eşit olmasını sağla
-            if (data.length > 0) {
-              data[data.length - 1].value = currentValue;
-            }
-            
-            return {
-              data,
-              startValue: Number(data[0].value.toFixed(2)),
-              endValue: Number(data[data.length - 1].value.toFixed(2)),
-              percentChange: Number((((data[data.length - 1].value - data[0].value) / data[0].value) * 100).toFixed(2)),
-            };
-          }
-        }
-      } catch (ibError) {
-        console.error('IB verisi üzerinden performans hesaplanamadı:', ibError);
       }
     }
     

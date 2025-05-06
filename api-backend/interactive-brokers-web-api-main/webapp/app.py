@@ -1,5 +1,6 @@
 import requests, time, os, random, json, logging
 from flask import Flask, render_template, request, redirect
+from datetime import datetime, timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -507,70 +508,91 @@ def performance():
         if not accounts:
             return render_template("auth_required.html", message="No accounts found. Please log in to Interactive Brokers Gateway.")
         
-        # İlk hesabı kullan
-        account = accounts[0]
+        # Try the second account if available, otherwise use the first one
+        account = accounts[1] if len(accounts) > 1 else accounts[0]
         account_id = account["id"]
         
-        # Hesap özetini al
-        summary, error = safe_api_request(f"{BASE_API_URL}/portfolio/{account_id}/summary")
-        
-        if error:
-            return render_template("error.html", error=f"Failed to get account summary: {error}")
-        
-        # Basit performans verisi oluştur
-        days = 30
-        match period:
-            case '1w': days = 7
-            case '1m': days = 30
-            case '3m': days = 90
-            case '6m': days = 180
-            case '1y': days = 365
-            case 'all': days = 730
-        
-        # Mevcut portföy değerini bul
-        current_value = 0
-        if isinstance(summary, dict):
-            if 'totalnetvalue' in summary and isinstance(summary['totalnetvalue'], dict) and 'amount' in summary['totalnetvalue']:
-                current_value = float(summary['totalnetvalue']['amount'])
-            elif 'netvalue' in summary and isinstance(summary['netvalue'], dict) and 'amount' in summary['netvalue']:
-                current_value = float(summary['netvalue']['amount'])
-            elif 'equity' in summary and isinstance(summary['equity'], dict) and 'amount' in summary['equity']:
-                current_value = float(summary['equity']['amount'])
-        
-        if current_value <= 0:
-            current_value = 100000  # Örnek değer
-        
-        # Yapay tarihsel veri oluştur
-        start_value = current_value * 0.9  # %10 daha düşük başla
-        data = []
-        
-        for i in range(days):
-            date = time.time() - (days - i) * 86400  # Gün başına saniye sayısı
-            date_str = time.strftime("%Y-%m-%d", time.localtime(date))
-            
-            # İlerlemeye göre değer oluştur
-            progress = i / (days - 1)
-            random_factor = 1 + ((random.random() - 0.5) * 0.01)  # Küçük rastgele varyasyon
-            value = start_value + (current_value - start_value) * progress * random_factor
-            
-            data.append({
-                "date": date_str,
-                "value": round(value, 2)
-            })
-        
-        # Son değerin mevcut portföy değeri olmasını sağla
-        if data:
-            data[-1]["value"] = current_value
-        
-        # Genel performans verisini oluştur
-        performance_data = {
-            "data": data,
-            "startValue": round(data[0]["value"], 2) if data else 0,
-            "endValue": round(data[-1]["value"], 2) if data else 0,
-            "percentChange": round(((data[-1]["value"] - data[0]["value"]) / data[0]["value"]) * 100, 2) if data and data[0]["value"] > 0 else 0
+        # Period mapping for API
+        period_map = {
+            '1d': '1D',
+            '1w': '1W',
+            '1m': '1M',
+            '3m': '3M',
+            '6m': '6M',
+            '1y': '1Y',
+            'all': 'YTD'
         }
         
-        return json.dumps(performance_data)
+        api_period = period_map.get(period, '1M')  # Default to monthly if period not recognized
+        
+        # New performance API endpoint
+        request_url = f"{BASE_API_URL}/pa/performance"
+        
+        # Prepare request JSON payload
+        json_content = {
+            "acctIds": [account_id],
+            "period": api_period
+        }
+        
+        # Make POST request to get performance data
+        logger.info(f"Getting performance data from {request_url} with payload: {json_content}")
+        performance_data, error = safe_api_request(request_url, method='post', json=json_content)
+        
+        if error:
+            logger.error(f"Failed to get performance data: {error}")
+            # Return mock data as fallback
+            return json.dumps(generate_mock_performance_data(period, 10000))
+        
+        logger.info(f"Performance data response: {json.dumps(performance_data, indent=2)}")
+        
+        # Process the performance data
+        processed_data = {
+            "data": [],
+            "startValue": 0,
+            "endValue": 0,
+            "percentChange": 0
+        }
+        
+        # Check if we have valid nav data
+        if (isinstance(performance_data, dict) and 'nav' in performance_data and 
+            'data' in performance_data['nav'] and performance_data['nav']['data'] and
+            'dates' in performance_data['nav'] and performance_data['nav']['dates']):
+            
+            nav_data = performance_data['nav']['data'][0]
+            dates = performance_data['nav']['dates']
+            navs = nav_data.get('navs', [])
+            
+            # Create data points from dates and navs
+            for i, (date, nav) in enumerate(zip(dates, navs)):
+                processed_data['data'].append({
+                    "date": date,
+                    "value": float(nav)
+                })
+            
+            # Set start and end values
+            if processed_data['data']:
+                processed_data['startValue'] = processed_data['data'][0]['value']
+                processed_data['endValue'] = processed_data['data'][-1]['value']
+                
+                # Calculate percent change
+                if processed_data['startValue'] > 0:
+                    processed_data['percentChange'] = round(
+                        ((processed_data['endValue'] - processed_data['startValue']) / 
+                         processed_data['startValue']) * 100, 
+                        2
+                    )
+                
+                # Add percentage returns if available
+                if 'cps' in performance_data and 'data' in performance_data['cps'] and performance_data['cps']['data']:
+                    returns = performance_data['cps']['data'][0].get('returns', [])
+                    for i, ret in enumerate(returns):
+                        if i < len(processed_data['data']):
+                            processed_data['data'][i]['return'] = float(ret)
+        else:
+            logger.warning("Invalid performance data response format, using mock data")
+            return json.dumps(generate_mock_performance_data(period, 10000))
+        
+        return json.dumps(processed_data)
     except Exception as e:
         logger.exception("Error in performance route")
         return json.dumps({
@@ -580,3 +602,53 @@ def performance():
             "endValue": 0,
             "percentChange": 0
         })
+
+def generate_mock_performance_data(period, current_value):
+    """Generate mock performance data for a given period and current value"""
+    # Current date
+    today_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Determine number of days based on period
+    days = 30
+    match period:
+        case '1d': days = 1
+        case '1w': days = 7
+        case '1m': days = 30
+        case '3m': days = 90
+        case '6m': days = 180
+        case '1y': days = 365
+        case 'all': days = 730
+    
+    # Create sample portfolio growth
+    start_value = current_value * 0.9  # 10% less than current
+    
+    # Generate mock data points
+    mock_data = []
+    for i in range(days):
+        # Calculate date by subtracting days
+        date = datetime.now() - timedelta(days=(days-i-1))
+        date_str = date.strftime("%Y-%m-%d")
+        
+        # Create value based on progress with a small fluctuation
+        progress = i / (days - 1) if days > 1 else 1
+        fluctuation = 1 + (random.random() - 0.5) * 0.02  # ±1% random fluctuation
+        value = start_value + (current_value - start_value) * progress * fluctuation
+        
+        mock_data.append({
+            "date": date_str,
+            "value": round(value, 2)
+        })
+    
+    # Make sure last value is exactly the current value
+    if mock_data:
+        mock_data[-1]["date"] = today_date
+        mock_data[-1]["value"] = current_value
+    
+    return {
+        "data": mock_data,
+        "startValue": round(start_value, 2),
+        "endValue": current_value,
+        "percentChange": round(((current_value - start_value) / start_value) * 100, 2),
+        "source": "mock_data",
+        "system_date": today_date
+    }
