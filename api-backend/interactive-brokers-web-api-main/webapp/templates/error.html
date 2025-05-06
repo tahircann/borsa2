@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Interactive Brokers Web API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .error-container {
+            background-color: #fff3f3;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 3px;
+        }
+        h1 {
+            color: #dc3545;
+        }
+        a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Error</h1>
+    <div class="error-container">
+        <p>{{ error }}</p>
+    </div>
+    <p>This error may occur if you're not logged in to Interactive Brokers Gateway.</p>
+    <p>
+        <a href="https://localhost:5055" class="button" target="_blank">Log in to Interactive Brokers Gateway</a>
+        <a href="/" class="button">Go to Dashboard</a>
+    </p>
+</body>
+</html> 

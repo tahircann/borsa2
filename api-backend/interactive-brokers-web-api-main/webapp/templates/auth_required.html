@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Required - Interactive Brokers Web API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .auth-container {
+            background-color: #e9f5ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 3px;
+        }
+        h1 {
+            color: #007bff;
+        }
+        .steps {
+            margin-top: 20px;
+        }
+        .step {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+        }
+        a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 8px 16px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Authentication Required</h1>
+    <div class="auth-container">
+        <p>{{ message }}</p>
+    </div>
+    
+    <div class="steps">
+        <h2>How to authenticate:</h2>
+        <div class="step">
+            <strong>Step 1:</strong> Click the button below to open Interactive Brokers Gateway login page.
+        </div>
+        <div class="step">
+            <strong>Step 2:</strong> Log in with your Interactive Brokers credentials.
+        </div>
+        <div class="step">
+            <strong>Step 3:</strong> Once logged in, return to this application and refresh the page.
+        </div>
+    </div>
+    
+    <p>
+        <a href="https://localhost:5055" class="button" target="_blank">Log in to Interactive Brokers Gateway</a>
+        <a href="javascript:window.location.reload()" class="button">Refresh this page</a>
+    </p>
+</body>
+</html> 

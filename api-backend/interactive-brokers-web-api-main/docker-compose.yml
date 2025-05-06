@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  ibkr:
+    build: .
+    image: ibkr-rest-api
+    container_name: ibkr
+    ports:
+      - "5055:5055"
+      - "5056:5056"
+    volumes:
+      - ./webapp:/app/webapp
+      - ./conf.yaml:/root/conf.yaml
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FLASK_DEBUG=1
+      - IBKR_ACCOUNT_ID=${IBKR_ACCOUNT_ID:-demo}

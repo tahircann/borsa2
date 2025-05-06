@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<h2>Dashboard</h2>
+
+<table class="table table-striped">
+    <tr>
+        <td>
+            Currency
+        </td>
+        <td>
+            {{ account.currency }}
+        </td>
+    </tr>
+    <tr>
+        <td>
+            Account Type
+        </td>
+        <td>
+            {{ account.type }}
+        </td>
+    </tr>
+    <tr>
+        <td>
+            Business Type
+        </td>
+        <td>
+            {{ account.businessType }}
+        </td>
+    </tr>
+    <tr>
+        <td>
+            Cash
+        </td>
+        <td>
+            {% if summary.totalcashvalue is defined and summary.totalcashvalue.amount is defined %}
+                ${{ summary.totalcashvalue.amount|round(2) }}<br />
+            {% elif summary.totalCashValue is defined %}
+                ${{ summary.totalCashValue|round(2) }}<br />
+            {% elif summary.settledcash is defined and summary.settledcash.amount is defined %}
+                ${{ summary.settledcash.amount|round(2) }}<br />
+            {% elif summary.settledcash_s is defined and summary.settledcash_s.amount is defined %}
+                ${{ summary.settledcash_s.amount|round(2) }}<br />
+            {% else %}
+                $0.00 (Cash data not available)<br />
+            {% endif %}
+            <small class="text-muted">Debug: {{ summary|tojson }}</small>
+        </td>
+    </tr>
+</table>
+
+{% endblock %}
