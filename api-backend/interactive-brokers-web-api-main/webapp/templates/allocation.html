@@ -1,0 +1,324 @@
+{% extends "layout.html" %}
+
+{% block title %}Portfolio Allocation{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Portfolio Allocation</h1>
+    <p>Account: {{ account.id }}</p>
+
+    <!-- Nav tabs for allocation views -->
+    <ul class="nav nav-tabs mb-4" id="allocationTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="asset-class-tab" data-bs-toggle="tab" data-bs-target="#asset-class" type="button" role="tab" aria-controls="asset-class" aria-selected="true">Asset Class</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="sector-tab" data-bs-toggle="tab" data-bs-target="#sector" type="button" role="tab" aria-controls="sector" aria-selected="false">Sector</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="group-tab" data-bs-toggle="tab" data-bs-target="#group" type="button" role="tab" aria-controls="group" aria-selected="false">Industry Group</button>
+        </li>
+    </ul>
+
+    <!-- Tab content -->
+    <div class="tab-content" id="allocationTabContent">
+        <!-- Asset Class Tab -->
+        <div class="tab-pane fade show active" id="asset-class" role="tabpanel" aria-labelledby="asset-class-tab">
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>Asset Class Allocation</h3>
+                    <canvas id="assetClassChart" width="400" height="300"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Asset Class</th>
+                                    <th>Long</th>
+                                    <th>Short</th>
+                                    <th>Net</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for i in range(asset_class_data.labels|length) %}
+                                <tr>
+                                    <td>{{ asset_class_data.labels[i] }}</td>
+                                    <td>${{ "{:,.2f}".format(asset_class_data.long_values[i]) }}</td>
+                                    <td>
+                                        {% if i < asset_class_data.short_values|length %}
+                                            -${{ "{:,.2f}".format(asset_class_data.short_values[i]) }}
+                                        {% else %}
+                                            $0.00
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if i < asset_class_data.short_values|length %}
+                                            ${{ "{:,.2f}".format(asset_class_data.long_values[i] - asset_class_data.short_values[i]) }}
+                                        {% else %}
+                                            ${{ "{:,.2f}".format(asset_class_data.long_values[i]) }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-active">
+                                    <td><strong>Total</strong></td>
+                                    <td><strong>${{ "{:,.2f}".format(asset_class_data.total_long) }}</strong></td>
+                                    <td><strong>-${{ "{:,.2f}".format(asset_class_data.total_short) }}</strong></td>
+                                    <td><strong>${{ "{:,.2f}".format(asset_class_data.total_long - asset_class_data.total_short) }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sector Tab -->
+        <div class="tab-pane fade" id="sector" role="tabpanel" aria-labelledby="sector-tab">
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>Sector Allocation</h3>
+                    <canvas id="sectorChart" width="400" height="300"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Sector</th>
+                                    <th>Long</th>
+                                    <th>Short</th>
+                                    <th>Net</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for i in range(sector_data.labels|length) %}
+                                <tr>
+                                    <td>{{ sector_data.labels[i] }}</td>
+                                    <td>${{ "{:,.2f}".format(sector_data.long_values[i]) }}</td>
+                                    <td>
+                                        {% if i < sector_data.short_values|length %}
+                                            -${{ "{:,.2f}".format(sector_data.short_values[i]) }}
+                                        {% else %}
+                                            $0.00
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if i < sector_data.short_values|length %}
+                                            ${{ "{:,.2f}".format(sector_data.long_values[i] - sector_data.short_values[i]) }}
+                                        {% else %}
+                                            ${{ "{:,.2f}".format(sector_data.long_values[i]) }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-active">
+                                    <td><strong>Total</strong></td>
+                                    <td><strong>${{ "{:,.2f}".format(sector_data.total_long) }}</strong></td>
+                                    <td><strong>-${{ "{:,.2f}".format(sector_data.total_short) }}</strong></td>
+                                    <td><strong>${{ "{:,.2f}".format(sector_data.total_long - sector_data.total_short) }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Industry Group Tab -->
+        <div class="tab-pane fade" id="group" role="tabpanel" aria-labelledby="group-tab">
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>Industry Group Allocation</h3>
+                    <canvas id="groupChart" width="400" height="300"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Industry Group</th>
+                                    <th>Long</th>
+                                    <th>Short</th>
+                                    <th>Net</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for i in range(group_data.labels|length) %}
+                                <tr>
+                                    <td>{{ group_data.labels[i] }}</td>
+                                    <td>${{ "{:,.2f}".format(group_data.long_values[i]) }}</td>
+                                    <td>
+                                        {% if i < group_data.short_values|length %}
+                                            -${{ "{:,.2f}".format(group_data.short_values[i]) }}
+                                        {% else %}
+                                            $0.00
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if i < group_data.short_values|length %}
+                                            ${{ "{:,.2f}".format(group_data.long_values[i] - group_data.short_values[i]) }}
+                                        {% else %}
+                                            ${{ "{:,.2f}".format(group_data.long_values[i]) }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-active">
+                                    <td><strong>Total</strong></td>
+                                    <td><strong>${{ "{:,.2f}".format(group_data.total_long) }}</strong></td>
+                                    <td><strong>-${{ "{:,.2f}".format(group_data.total_short) }}</strong></td>
+                                    <td><strong>${{ "{:,.2f}".format(group_data.total_long - group_data.total_short) }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js for visualization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Function to generate random colors
+    function generateColors(count) {
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            const r = Math.floor(Math.random() * 255);
+            const g = Math.floor(Math.random() * 255);
+            const b = Math.floor(Math.random() * 255);
+            colors.push(`rgba(${r}, ${g}, ${b}, 0.7)`);
+        }
+        return colors;
+    }
+
+    // Asset Class Chart
+    const assetClassCtx = document.getElementById('assetClassChart').getContext('2d');
+    const assetClassLabels = {{ asset_class_data.labels|tojson }};
+    const assetClassLongValues = {{ asset_class_data.long_values|tojson }};
+    const assetClassColors = generateColors(assetClassLabels.length);
+    
+    new Chart(assetClassCtx, {
+        type: 'pie',
+        data: {
+            labels: assetClassLabels,
+            datasets: [{
+                label: 'Long Positions',
+                data: assetClassLongValues,
+                backgroundColor: assetClassColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                title: {
+                    display: true,
+                    text: 'Asset Class Distribution'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                            const percentage = ((value / total) * 100).toFixed(2);
+                            return `${label}: $${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Sector Chart
+    const sectorCtx = document.getElementById('sectorChart').getContext('2d');
+    const sectorLabels = {{ sector_data.labels|tojson }};
+    const sectorLongValues = {{ sector_data.long_values|tojson }};
+    const sectorColors = generateColors(sectorLabels.length);
+    
+    new Chart(sectorCtx, {
+        type: 'pie',
+        data: {
+            labels: sectorLabels,
+            datasets: [{
+                label: 'Long Positions',
+                data: sectorLongValues,
+                backgroundColor: sectorColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                title: {
+                    display: true,
+                    text: 'Sector Distribution'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                            const percentage = ((value / total) * 100).toFixed(2);
+                            return `${label}: $${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Industry Group Chart
+    const groupCtx = document.getElementById('groupChart').getContext('2d');
+    const groupLabels = {{ group_data.labels|tojson }};
+    const groupLongValues = {{ group_data.long_values|tojson }};
+    const groupColors = generateColors(groupLabels.length);
+    
+    new Chart(groupCtx, {
+        type: 'pie',
+        data: {
+            labels: groupLabels,
+            datasets: [{
+                label: 'Long Positions',
+                data: groupLongValues,
+                backgroundColor: groupColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                title: {
+                    display: true,
+                    text: 'Industry Group Distribution'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                            const percentage = ((value / total) * 100).toFixed(2);
+                            return `${label}: $${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %} 

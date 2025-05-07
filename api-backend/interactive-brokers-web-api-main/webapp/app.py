@@ -808,3 +808,153 @@ def positions():
     except Exception as e:
         logger.exception("Error in positions route")
         return render_template("error.html", error=f"Error retrieving positions: {str(e)}")
+
+@app.route("/allocation")
+def portfolio_allocation():
+    try:
+        # Get accounts
+        accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
+        
+        if error:
+            if error == "unauthorized":
+                return render_template("auth_required.html", message="Please log in to Interactive Brokers Gateway first to view portfolio allocation.")
+            return render_template("error.html", error=f"Failed to get accounts: {error}")
+        
+        if not accounts:
+            return render_template("auth_required.html", message="No accounts found. Please log in to Interactive Brokers Gateway.")
+        
+        # Try the second account if available, otherwise use the first one
+        account = accounts[1] if len(accounts) > 1 else accounts[0]
+        account_id = account["id"]
+        
+        # Fetch allocation data from IBKR API
+        allocation_data, error = safe_api_request(f"{BASE_API_URL}/portfolio/{account_id}/allocation")
+        
+        if error:
+            return render_template("error.html", error=f"Failed to get allocation data: {error}")
+            
+        logger.info(f"Allocation data response: {json.dumps(allocation_data, indent=2)}")
+        
+        # Process allocation data for visualization
+        # Extract asset class data
+        asset_class_data = {
+            'labels': [],
+            'long_values': [],
+            'short_values': [],
+            'total_long': 0,
+            'total_short': 0
+        }
+        
+        if 'assetClass' in allocation_data:
+            # Process long positions
+            if 'long' in allocation_data['assetClass']:
+                for asset_class, value in allocation_data['assetClass']['long'].items():
+                    asset_class_data['labels'].append(asset_class)
+                    asset_class_data['long_values'].append(float(value))
+                    asset_class_data['total_long'] += float(value)
+                    
+            # Process short positions
+            if 'short' in allocation_data['assetClass']:
+                # For short positions, ensure we have matching labels with longs
+                for asset_class, value in allocation_data['assetClass']['short'].items():
+                    if asset_class not in asset_class_data['labels']:
+                        asset_class_data['labels'].append(asset_class)
+                        # Add 0 for long position if this asset class doesn't exist there
+                        asset_class_data['long_values'].append(0)
+                    
+                    # Find the index of this asset class
+                    idx = asset_class_data['labels'].index(asset_class)
+                    
+                    # Extend short_values list if needed
+                    while len(asset_class_data['short_values']) <= idx:
+                        asset_class_data['short_values'].append(0)
+                    
+                    # Set the short value (convert to positive for visualization)
+                    asset_class_data['short_values'][idx] = abs(float(value))
+                    asset_class_data['total_short'] += abs(float(value))
+        
+        # Extract sector data
+        sector_data = {
+            'labels': [],
+            'long_values': [],
+            'short_values': [],
+            'total_long': 0,
+            'total_short': 0
+        }
+        
+        if 'sector' in allocation_data:
+            # Process long positions
+            if 'long' in allocation_data['sector']:
+                for sector, value in allocation_data['sector']['long'].items():
+                    sector_data['labels'].append(sector)
+                    sector_data['long_values'].append(float(value))
+                    sector_data['total_long'] += float(value)
+                    
+            # Process short positions
+            if 'short' in allocation_data['sector']:
+                # For short positions, ensure we have matching labels with longs
+                for sector, value in allocation_data['sector']['short'].items():
+                    if sector not in sector_data['labels']:
+                        sector_data['labels'].append(sector)
+                        # Add 0 for long position if this sector doesn't exist there
+                        sector_data['long_values'].append(0)
+                    
+                    # Find the index of this sector
+                    idx = sector_data['labels'].index(sector)
+                    
+                    # Extend short_values list if needed
+                    while len(sector_data['short_values']) <= idx:
+                        sector_data['short_values'].append(0)
+                    
+                    # Set the short value (convert to positive for visualization)
+                    sector_data['short_values'][idx] = abs(float(value))
+                    sector_data['total_short'] += abs(float(value))
+        
+        # Extract group data
+        group_data = {
+            'labels': [],
+            'long_values': [],
+            'short_values': [],
+            'total_long': 0,
+            'total_short': 0
+        }
+        
+        if 'group' in allocation_data:
+            # Process long positions
+            if 'long' in allocation_data['group']:
+                for group, value in allocation_data['group']['long'].items():
+                    group_data['labels'].append(group)
+                    group_data['long_values'].append(float(value))
+                    group_data['total_long'] += float(value)
+                    
+            # Process short positions
+            if 'short' in allocation_data['group']:
+                # For short positions, ensure we have matching labels with longs
+                for group, value in allocation_data['group']['short'].items():
+                    if group not in group_data['labels']:
+                        group_data['labels'].append(group)
+                        # Add 0 for long position if this group doesn't exist there
+                        group_data['long_values'].append(0)
+                    
+                    # Find the index of this group
+                    idx = group_data['labels'].index(group)
+                    
+                    # Extend short_values list if needed
+                    while len(group_data['short_values']) <= idx:
+                        group_data['short_values'].append(0)
+                    
+                    # Set the short value (convert to positive for visualization)
+                    group_data['short_values'][idx] = abs(float(value))
+                    group_data['total_short'] += abs(float(value))
+        
+        return render_template(
+            "allocation.html", 
+            allocation=allocation_data,
+            asset_class_data=asset_class_data,
+            sector_data=sector_data,
+            group_data=group_data,
+            account=account
+        )
+    except Exception as e:
+        logger.exception("Error in portfolio allocation route")
+        return render_template("error.html", error=f"Error retrieving portfolio allocation: {str(e)}")

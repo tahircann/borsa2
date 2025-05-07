@@ -126,6 +126,19 @@ export type Dividend = {
   total: number;
 };
 
+// Define allocation data types
+export type AllocationData = {
+  assetClass: AllocationItem[];
+  sector: AllocationItem[];
+  industry: AllocationItem[];
+};
+
+export type AllocationItem = {
+  name: string;
+  value: number;
+  color?: string;
+};
+
 // API bağlantı kontrolü
 const checkApiConnection = async (): Promise<boolean> => {
   if (USE_MOCK_DATA) {
@@ -821,10 +834,98 @@ export const getPositions = async (): Promise<any> => {
   }
 };
 
+export const getAllocation = async (): Promise<AllocationData> => {
+  try {
+    console.log('Fetching allocation data...');
+    const response = await axios.get('http://127.0.0.1:5056/allocation', {
+      timeout: 5000
+    });
+    
+    console.log('Allocation data received:', response.data);
+    
+    if (response.data && typeof response.data === 'object') {
+      // Create a properly structured response
+      const result: AllocationData = {
+        assetClass: [],
+        sector: [],
+        industry: []
+      };
+      
+      // Process asset class data if available
+      if (Array.isArray(response.data.assetClass)) {
+        result.assetClass = response.data.assetClass.map((item: any) => ({
+          name: item.name || 'Unknown',
+          value: typeof item.value === 'number' ? item.value : parseFloat(item.value) || 0,
+          color: item.color
+        }));
+      }
+      
+      // Process sector data if available
+      if (Array.isArray(response.data.sector)) {
+        result.sector = response.data.sector.map((item: any) => ({
+          name: item.name || 'Unknown',
+          value: typeof item.value === 'number' ? item.value : parseFloat(item.value) || 0,
+          color: item.color
+        }));
+      }
+      
+      // Process industry data if available
+      if (Array.isArray(response.data.industry)) {
+        result.industry = response.data.industry.map((item: any) => ({
+          name: item.name || 'Unknown',
+          value: typeof item.value === 'number' ? item.value : parseFloat(item.value) || 0,
+          color: item.color
+        }));
+      }
+      
+      console.log('Processed allocation data:', result);
+      return result;
+    }
+    
+    throw new Error('Invalid response format');
+  } catch (error: any) {
+    console.error('Failed to fetch allocation data:', error.message);
+    // Return mock data on error as fallback
+    return generateMockAllocationData();
+  }
+};
+
+// Generate mock allocation data for testing
+const generateMockAllocationData = (): AllocationData => {
+  return {
+    assetClass: [
+      { name: 'Stocks', value: 1850000, color: '#8fffa9' },
+      { name: 'Cash', value: 450000, color: '#e9e9e9' },
+      { name: 'Accruals', value: 172630, color: '#75d7ff' }
+    ],
+    sector: [
+      { name: 'Technology', value: 780000, color: '#292b3c' },
+      { name: 'Consumer Cyclical', value: 520000, color: '#f9d673' },
+      { name: 'Energy', value: 320000, color: '#ff85c0' },
+      { name: 'Industrial', value: 230000, color: '#aaaaaa' },
+      { name: 'Utilities', value: 180000, color: '#5bc0de' },
+      { name: 'Communications', value: 120000, color: '#99ddff' },
+      { name: 'Basic Materials', value: 70000, color: '#d9534f' },
+      { name: 'Others', value: 80000, color: '#f0ad4e' }
+    ],
+    industry: [
+      { name: 'Healthcare Products', value: 580000, color: '#bc8f50' },
+      { name: 'Others', value: 420000, color: '#f0ad4e' },
+      { name: 'Biotechnology', value: 350000, color: '#ceeaff' },
+      { name: 'Computers', value: 280000, color: '#f3f3ab' },
+      { name: 'Semiconductors', value: 240000, color: '#ffea95' },
+      { name: 'Transportation', value: 120000, color: '#ff7575' },
+      { name: 'Telecommunications', value: 100000, color: '#ffc8b3' },
+      { name: 'Mining', value: 80000, color: '#9e9e9e' }
+    ]
+  };
+};
+
 export default {
   getPortfolio,
   getTrades,
   getDividends,
   getPerformance,
   getPositions,
+  getAllocation,
 }; 

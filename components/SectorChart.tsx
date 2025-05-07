@@ -21,16 +21,44 @@ const COLORS = [
   '#99ddff', // Communications (light blue)
 ];
 
+// Custom tooltip component
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
+        <p className="font-medium text-gray-900">{data.name}</p>
+        <p className="text-gray-700">
+          ${data.value.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </p>
+        <p className="text-gray-600 text-sm">
+          {((data.value / data.totalValue) * 100).toFixed(2)}%
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 const SectorChart: React.FC<SectorChartProps> = ({ data, totalValue }) => {
   // Sort data from largest to smallest
   const sortedData = [...data].sort((a, b) => b.value - a.value);
+  
+  // Add totalValue to each data item for percentage calculation in tooltip
+  const enhancedData = sortedData.map(item => ({
+    ...item,
+    totalValue
+  }));
 
   return (
     <div className="w-full h-full">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={sortedData}
+            data={enhancedData}
             cx="50%"
             cy="50%"
             innerRadius={60}
@@ -39,32 +67,17 @@ const SectorChart: React.FC<SectorChartProps> = ({ data, totalValue }) => {
             dataKey="value"
             labelLine={false}
           >
-            {sortedData.map((entry, index) => (
+            {enhancedData.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip
-            formatter={(value: number) => [`$${value.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`, '']}
-          />
+          <Tooltip content={<CustomTooltip />} />
           <Legend layout="vertical" align="right" verticalAlign="middle" />
           
-          {/* Center text */}
+          {/* Center text - only show the total value */}
           <text
             x="50%"
-            y="45%"
-            textAnchor="middle"
-            dominantBaseline="middle"
-            className="text-gray-500 font-light"
-            fontSize="16"
-          >
-            LONG
-          </text>
-          <text
-            x="50%"
-            y="55%"
+            y="50%"
             textAnchor="middle"
             dominantBaseline="middle"
             className="text-gray-800 font-bold"
