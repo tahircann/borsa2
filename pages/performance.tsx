@@ -121,18 +121,6 @@ export default function PerformancePage() {
         </div>
       )}
 
-      {performanceData?.source === 'mock_data' && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-6">
-          Note: Currently showing estimated performance data. This may not reflect actual account performance.
-        </div>
-      )}
-
-      {hasFutureDates && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-6">
-          Note: The system date appears to be incorrect. The chart shows data with future dates.
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="text-sm text-gray-500 mb-1">Starting Value</div>
@@ -210,49 +198,6 @@ export default function PerformancePage() {
               <p className="text-gray-500">No performance data available for this period</p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Debug bölümü - Gelen ham verileri göster */}
-      <div className="bg-gray-100 rounded-lg p-4 mb-6 overflow-auto">
-        <h3 className="text-lg font-semibold mb-2">Debug: Raw Performance Data</h3>
-        <div className="mb-2">
-          <span className="font-medium">Data points:</span> {performanceData?.data.length || 0}
-        </div>
-        <details>
-          <summary className="cursor-pointer text-blue-600 hover:text-blue-800">Show Raw Data</summary>
-          <pre className="bg-white p-4 rounded mt-2 overflow-auto max-h-96 text-xs">
-            {performanceData ? JSON.stringify(performanceData, null, 2) : 'No data'}
-          </pre>
-        </details>
-        
-        <h4 className="text-md font-semibold mt-4 mb-2">Data Points Sample</h4>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-2 text-left">Index</th>
-                <th className="px-3 py-2 text-left">Date</th>
-                <th className="px-3 py-2 text-right">Return</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {performanceData?.data.slice(0, 10).map((item, index) => (
-                <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                  <td className="px-3 py-2">{index}</td>
-                  <td className="px-3 py-2">{item.date}</td>
-                  <td className="px-3 py-2 text-right">{(item.return * 100).toFixed(2)}%</td>
-                </tr>
-              ))}
-              {performanceData && performanceData.data.length > 10 && (
-                <tr>
-                  <td colSpan={3} className="px-3 py-2 text-center text-gray-500">
-                    ...and {performanceData.data.length - 10} more data points
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
     </>

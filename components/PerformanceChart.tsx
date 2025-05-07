@@ -335,43 +335,6 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
       <div className="relative h-96">
         <canvas ref={chartRef}></canvas>
       </div>
-      
-      {/* Debug information */}
-      <div className="mt-4 p-3 bg-gray-100 text-xs rounded">
-        <details>
-          <summary className="cursor-pointer font-semibold">Debug Data ({data.length} points)</summary>
-          <div className="mt-2 max-h-40 overflow-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-200">
-                  <th className="p-1 border text-left">Index</th>
-                  <th className="p-1 border text-left">Date</th>
-                  <th className="p-1 border text-right">Return</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((item, i) => {
-                  const parsedDate = parseDate(item.date);
-                  const formattedDate = !isNaN(parsedDate.getTime()) 
-                    ? formatDateForChart(parsedDate)
-                    : 'Invalid Date';
-                    
-                  return (
-                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="p-1 border text-center">{i + 1}</td>
-                      <td className="p-1 border">
-                        <div>{formatDate(item.date)}</div>
-                        <div className="text-xs text-gray-500">{formattedDate}</div>
-                      </td>
-                      <td className="p-1 border text-right">{(item.return * 100).toFixed(2)}%</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      </div>
     </div>
   );
 } 
