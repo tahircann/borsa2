@@ -958,3 +958,47 @@ def portfolio_allocation():
     except Exception as e:
         logger.exception("Error in portfolio allocation route")
         return render_template("error.html", error=f"Error retrieving portfolio allocation: {str(e)}")
+
+@app.route("/real-market")
+def real_market():
+    try:
+        # Get query parameters for contract IDs and fields
+        conids = request.args.get('conids', '265598,8314')  # Default contracts if none provided
+        fields = request.args.get('fields', '31,84,86')     # Default fields if none provided
+        
+        # Fetch market data snapshot from IBKR API
+        market_data_url = f"{BASE_API_URL}/iserver/marketdata/snapshot?conids={conids}&fields={fields}"
+        
+        # Güvenli API isteği
+        market_data, error = safe_api_request(market_data_url)
+        
+        if error:
+            if error == "unauthorized":
+                return render_template("auth_required.html", message="Please log in to Interactive Brokers Gateway first to view market data.")
+            return render_template("error.html", error=f"Failed to get market data: {error}")
+        
+        logger.info(f"Market data response: {json.dumps(market_data, indent=2)}")
+        
+        # Field descriptions for better readability
+        field_descriptions = {
+            '31': 'Last Price',
+            '84': 'Bid Price', 
+            '86': 'Ask Price',
+            '85': 'Bid Size',
+            '87': 'Ask Size',
+            '7295': 'Open',
+            '7296': 'High',
+            '7297': 'Low',
+            '7999': 'Close',
+            '6119': 'Server ID'
+        }
+        
+        # Return the market data with the field descriptions
+        return render_template("real_market.html", 
+                              market_data=market_data, 
+                              field_descriptions=field_descriptions,
+                              conids=conids,
+                              fields=fields)
+    except Exception as e:
+        logger.exception("Error in real-market route")
+        return render_template("error.html", error=f"Error retrieving market data: {str(e)}")
