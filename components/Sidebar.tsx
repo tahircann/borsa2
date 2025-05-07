@@ -7,7 +7,8 @@ import {
   FiDollarSign, 
   FiInfo, 
   FiBriefcase,
-  FiPieChart 
+  FiPieChart,
+  FiGrid 
 } from 'react-icons/fi'
 
 type NavItem = {
@@ -24,6 +25,7 @@ export default function Sidebar() {
     { name: 'Trades', href: '/trades', icon: <FiTrendingUp className="h-5 w-5" /> },
     { name: 'Portfolio Stock Ranks', href: '/stock-ranks', icon: <FiBarChart2 className="h-5 w-5" /> },
     { name: 'Performance', href: '/performance', icon: <FiPieChart className="h-5 w-5" /> },
+    { name: 'Sectors', href: '/sectors', icon: <FiGrid className="h-5 w-5" /> },
     { name: 'How it Works?', href: '/how-it-works', icon: <FiInfo className="h-5 w-5" /> },
     { name: 'Portfolio', href: '/portfolio', icon: <FiBriefcase className="h-5 w-5" /> },
     { name: 'Dividend', href: '/dividend', icon: <FiDollarSign className="h-5 w-5" /> },

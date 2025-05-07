@@ -59,6 +59,10 @@ def safe_api_request(url, method='get', **kwargs):
 def timectime(s):
     return time.ctime(s/1000)
 
+@app.template_filter('tojson')
+def format_json(value, indent=None):
+    """Convert a value to JSON with indentation option"""
+    return json.dumps(value, indent=indent)
 
 @app.route("/")
 def dashboard():
@@ -652,3 +656,155 @@ def generate_mock_performance_data(period, current_value):
         "source": "mock_data",
         "system_date": today_date
     }
+
+@app.route("/summary")
+def account_summary():
+    try:
+        # Get accounts
+        accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
+        
+        if error:
+            if error == "unauthorized":
+                return render_template("auth_required.html", message="Please log in to Interactive Brokers Gateway first to view account summary.")
+            return render_template("error.html", error=f"Failed to get accounts: {error}")
+        
+        if not accounts:
+            return render_template("auth_required.html", message="No accounts found. Please log in to Interactive Brokers Gateway.")
+        
+        # Try the second account if available, otherwise use the first one
+        account = accounts[1] if len(accounts) > 1 else accounts[0]
+        account_id = account["id"]
+        
+        # Fetch account summary from IBKR API
+        summary_data, error = safe_api_request(f"{BASE_API_URL}/portfolio/{account_id}/summary")
+        
+        if error:
+            return render_template("error.html", error=f"Failed to get account summary: {error}")
+            
+        logger.info(f"Summary data response: {json.dumps(summary_data, indent=2)}")
+        
+        # Process the summary data to organized format
+        processed_summary = {
+            "account_info": {},
+            "balance_info": {},
+            "security_values": {},
+            "commodity_values": {}
+        }
+        
+        # Categorize the summary items
+        for key, value in summary_data.items():
+            if key.endswith("-c"):
+                # Commodity values
+                base_key = key[:-2]
+                processed_summary["commodity_values"][base_key] = value
+            elif key.endswith("-s"):
+                # Security values
+                base_key = key[:-2]
+                processed_summary["security_values"][base_key] = value
+            elif "cash" in key or "value" in key or "margin" in key or "fund" in key:
+                # Balance related info
+                processed_summary["balance_info"][key] = value
+            else:
+                # Other account info
+                processed_summary["account_info"][key] = value
+        
+        return render_template("summary.html", summary=summary_data, processed=processed_summary, account=account)
+    except Exception as e:
+        logger.exception("Error in account summary route")
+        return render_template("error.html", error=f"Error retrieving account summary: {str(e)}")
+
+@app.route("/ledger")
+def portfolio_ledger():
+    try:
+        # Get accounts
+        accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
+        
+        if error:
+            if error == "unauthorized":
+                return render_template("auth_required.html", message="Please log in to Interactive Brokers Gateway first to view ledger information.")
+            return render_template("error.html", error=f"Failed to get accounts: {error}")
+        
+        if not accounts:
+            return render_template("auth_required.html", message="No accounts found. Please log in to Interactive Brokers Gateway.")
+        
+        # Try the second account if available, otherwise use the first one
+        account = accounts[1] if len(accounts) > 1 else accounts[0]
+        account_id = account["id"]
+        
+        # Fetch ledger data from IBKR API
+        ledger_data, error = safe_api_request(f"{BASE_API_URL}/portfolio/{account_id}/ledger")
+        
+        if error:
+            return render_template("error.html", error=f"Failed to get ledger data: {error}")
+            
+        logger.info(f"Ledger data response: {json.dumps(ledger_data, indent=2)}")
+        
+        return render_template("ledger.html", ledger=ledger_data, account=account)
+    except Exception as e:
+        logger.exception("Error in portfolio ledger route")
+        return render_template("error.html", error=f"Error retrieving portfolio ledger: {str(e)}")
+
+@app.route("/positions")
+def positions():
+    try:
+        # Get accounts
+        accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
+        
+        if error:
+            if error == "unauthorized":
+                return render_template("auth_required.html", message="Please log in to Interactive Brokers Gateway first to view positions.")
+            return render_template("error.html", error=f"Failed to get accounts: {error}")
+        
+        if not accounts:
+            return render_template("auth_required.html", message="No accounts found. Please log in to Interactive Brokers Gateway.")
+        
+        # Try the second account if available, otherwise use the first one
+        account = accounts[1] if len(accounts) > 1 else accounts[0]
+        account_id = account["id"]
+        
+        # Fetch positions data from IBKR API using portfolio2 endpoint
+        # Sort by position and display in ascending order
+        positions_data, error = safe_api_request(f"{BASE_API_URL}/portfolio2/{account_id}/positions?direction=a&sort=position")
+        
+        if error:
+            return render_template("error.html", error=f"Failed to get positions data: {error}")
+            
+        logger.info(f"Positions data response: {json.dumps(positions_data, indent=2)}")
+        
+        # Process positions data
+        positions_list = []
+        total_market_value = 0
+        total_cost_basis = 0
+        total_unrealized_pnl = 0
+        
+        # Check if positions_data is a list of positions or a single position object
+        if isinstance(positions_data, list):
+            positions_list = positions_data
+        elif isinstance(positions_data, dict) and 'conid' in positions_data:
+            # Single position returned as an object
+            positions_list = [positions_data]
+        
+        # Calculate totals
+        for position in positions_list:
+            if 'marketValue' in position:
+                total_market_value += float(position.get('marketValue', 0))
+            
+            if 'avgCost' in position and 'position' in position:
+                position_cost = float(position.get('avgCost', 0)) * float(position.get('position', 0))
+                total_cost_basis += position_cost
+            
+            if 'unrealizedPnl' in position:
+                total_unrealized_pnl += float(position.get('unrealizedPnl', 0))
+        
+        # Prepare summary data
+        summary = {
+            'totalMarketValue': total_market_value,
+            'totalCostBasis': total_cost_basis,
+            'totalUnrealizedPnl': total_unrealized_pnl,
+            'totalPositions': len(positions_list)
+        }
+        
+        return render_template("positions.html", positions=positions_list, account=account, summary=summary)
+    except Exception as e:
+        logger.exception("Error in positions route")
+        return render_template("error.html", error=f"Error retrieving positions: {str(e)}")

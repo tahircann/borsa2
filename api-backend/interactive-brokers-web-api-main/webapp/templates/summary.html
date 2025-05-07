@@ -1,0 +1,139 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Account Summary for {{ account.id }}</h3>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h4>Cash and Balances</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Currency</th>
+                                    <th>Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for key, item in processed.balance_info.items() %}
+                                <tr>
+                                    <td>{{ key }}</td>
+                                    <td>{{ item.amount }}</td>
+                                    <td>{{ item.currency }}</td>
+                                    <td>{{ item.timestamp|ctime }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4>Account Information</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Value</th>
+                                    <th>Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for key, item in processed.account_info.items() %}
+                                <tr>
+                                    <td>{{ key }}</td>
+                                    <td>{{ item.value if item.value else item.amount }}</td>
+                                    <td>{{ item.timestamp|ctime }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h4>Securities</h4>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Amount</th>
+                                            <th>Currency</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for key, item in processed.security_values.items() %}
+                                        <tr>
+                                            <td>{{ key }}</td>
+                                            <td>{{ item.amount }}</td>
+                                            <td>{{ item.currency }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h4>Commodities</h4>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Amount</th>
+                                            <th>Currency</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for key, item in processed.commodity_values.items() %}
+                                        <tr>
+                                            <td>{{ key }}</td>
+                                            <td>{{ item.amount }}</td>
+                                            <td>{{ item.currency }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3>Raw Summary Data</h3>
+                <small class="text-muted">Expand to see all raw data returned from API</small>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#rawDataCollapse">
+                    Show/Hide Raw Data
+                </button>
+                <div class="collapse" id="rawDataCollapse">
+                    <div class="card card-body">
+                        <pre>{{ summary|tojson(indent=2) }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

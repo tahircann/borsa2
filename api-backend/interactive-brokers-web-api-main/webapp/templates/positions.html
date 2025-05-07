@@ -1,0 +1,135 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Positions for {{ account.id }}</h3>
+            </div>
+            <div class="card-body">
+                {% if positions and positions|length > 0 %}
+                    <!-- Summary Cards -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Market Value</h5>
+                                </div>
+                                <div class="card-body">
+                                    <h3 class="text-center">${{ summary.totalMarketValue|round(2) }}</h3>
+                                    <p class="text-center text-muted">{{ positions[0].currency }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="card border-secondary">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Cost Basis</h5>
+                                </div>
+                                <div class="card-body">
+                                    <h3 class="text-center">${{ summary.totalCostBasis|round(2) }}</h3>
+                                    <p class="text-center text-muted">{{ positions[0].currency }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="card {% if summary.totalUnrealizedPnl >= 0 %}border-success{% else %}border-danger{% endif %}">
+                                <div class="card-header {% if summary.totalUnrealizedPnl >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                                    <h5 class="mb-0">Unrealized P&L</h5>
+                                </div>
+                                <div class="card-body">
+                                    <h3 class="text-center">${{ summary.totalUnrealizedPnl|round(2) }}</h3>
+                                    <p class="text-center text-muted">{{ positions[0].currency }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="mb-0">Positions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <h3 class="text-center">{{ summary.totalPositions }}</h3>
+                                    <p class="text-center text-muted">Total Holdings</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Positions Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Description</th>
+                                    <th>Quantity</th>
+                                    <th>Market Price</th>
+                                    <th>Avg Cost</th>
+                                    <th>Market Value</th>
+                                    <th>Unrealized P&L</th>
+                                    <th>Sector/Group</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for position in positions %}
+                                <tr>
+                                    <td>
+                                        {% if position.conid %}
+                                        <a href="/contract/{{ position.conid }}/5d">{{ position.description }}</a>
+                                        {% else %}
+                                        {{ position.description }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ position.secType }} ({{ position.assetClass }})</td>
+                                    <td>{{ position.position }}</td>
+                                    <td>{{ position.marketPrice|round(2) }}</td>
+                                    <td>{{ position.avgCost|round(2) }}</td>
+                                    <td>{{ position.marketValue|round(2) }}</td>
+                                    <td class="{% if position.unrealizedPnl >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {{ position.unrealizedPnl|round(2) }}
+                                    </td>
+                                    <td>
+                                        {% if position.sector %}{{ position.sector }}{% endif %}
+                                        {% if position.group %} / {{ position.group }}{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        No positions found for this account.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3>Raw Positions Data</h3>
+                <small class="text-muted">Expand to see all raw data returned from API</small>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#rawDataCollapse">
+                    Show/Hide Raw Data
+                </button>
+                <div class="collapse" id="rawDataCollapse">
+                    <div class="card card-body">
+                        <pre>{{ positions|tojson(indent=2) }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

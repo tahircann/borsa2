@@ -126,7 +126,7 @@ export default function Trades() {
               ) : filteredTrades.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No trades found
+                    API'ye bağlanılamadı veya işlem verisi bulunamadı. Lütfen Interactive Brokers hesabınıza bağlı olduğunuzdan emin olun.
                   </td>
                 </tr>
               ) : (

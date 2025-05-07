@@ -562,72 +562,13 @@ export const getTrades = async (
       } catch (ibError) {
         console.error('IB Gateway\'den işlem verisi alınamadı:', ibError);
       }
-      
-      console.log('Gerçek veri alınamadı, mock veri kullanılacak');
     }
     
-    // Mock veri kullan
-    console.log('Mock trade verileri oluşturuluyor...');
-    // Create a predefined set of trades with guaranteed company data
-    const symbolList = [
-      { ticker: 'AAPL', company: 'Apple Inc.', description: 'Consumer Electronics' },
-      { ticker: 'MSFT', company: 'Microsoft Corp.', description: 'Software & Cloud' },
-      { ticker: 'GOOGL', company: 'Alphabet Inc.', description: 'Internet Services' },
-      { ticker: 'AMZN', company: 'Amazon.com Inc.', description: 'E-Commerce & Cloud' },
-      { ticker: 'TSLA', company: 'Tesla Inc.', description: 'Electric Vehicles' },
-      { ticker: 'META', company: 'Meta Platforms Inc.', description: 'Social Media' },
-      { ticker: 'NVDA', company: 'NVIDIA Corp.', description: 'Semiconductors' },
-      { ticker: 'JNJ', company: 'Johnson & Johnson', description: 'Healthcare' },
-      { ticker: 'V', company: 'Visa Inc.', description: 'Financial Services' },
-      { ticker: 'WMT', company: 'Walmart Inc.', description: 'Retail' },
-      { ticker: 'JPM', company: 'JPMorgan Chase & Co.', description: 'Banking' },
-      { ticker: 'PG', company: 'Procter & Gamble Co.', description: 'Consumer Goods' },
-      { ticker: 'DIS', company: 'The Walt Disney Co.', description: 'Entertainment' },
-      { ticker: 'MA', company: 'Mastercard Inc.', description: 'Financial Services' },
-      { ticker: 'HD', company: 'Home Depot Inc.', description: 'Home Improvement Retail' }
-    ];
-
-    const orderTypes = ['Market', 'Limit', 'Stop', 'Stop Limit'];
-    const statuses = ['Active', 'Filled', 'Cancelled', 'Rejected', 'Pending'];
-    const orderDescriptions = ['Buy to Open', 'Sell to Close', 'Buy to Close', 'Sell to Open'];
-
-    // Generate guaranteed valid mock data
-    const mockData = Array.from({ length: 50 }).map((_, index) => {
-      const symbolInfo = symbolList[index % symbolList.length];
-      const orderType = orderTypes[Math.floor(Math.random() * orderTypes.length)];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
-      const orderDescription = orderDescriptions[Math.floor(Math.random() * orderDescriptions.length)];
-      const canCancel = status === 'Active' || status === 'Pending';
-      
-      return {
-        id: `trade-${index + 1}`,
-        orderId: `ORD-${100000 + index}`,
-        ticker: symbolInfo.ticker,
-        description: symbolInfo.description,
-        company: symbolInfo.company, // Guaranteed to have a company name
-        orderDescription,
-        orderType,
-        status,
-        canCancel
-      };
-    });
-
-    // Debug: Print samples of the mock data to verify company values
-    console.log('Generated mock data samples:');
-    mockData.slice(0, 3).forEach((item, index) => {
-      console.log(`Mock item ${index}:`, {
-        ticker: item.ticker,
-        company: item.company,
-        description: item.description
-      });
-    });
-
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    
+    // Gerçek veri alınamadığında boş dizi döndür, mock veri gösterme
+    console.log('Gerçek veri alınamadı ve mock veri kullanımı devre dışı bırakıldı. Boş veri döndürülüyor.');
     return {
-      trades: mockData.slice(startIndex, endIndex),
-      total: mockData.length,
+      trades: [],
+      total: 0,
     };
   } catch (error) {
     console.error('Trades API hatası:', error);
@@ -785,9 +726,105 @@ export const getPerformance = async (period: string = '1m'): Promise<{
   }
 };
 
+export const getPositions = async (): Promise<any> => {
+  try {
+    // Use direct URL since it's a local API outside the proxy system
+    const response = await axios.get('http://127.0.0.1:5056/positions');
+    console.log('Positions data received:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch positions data:', error);
+    // Return mock data when API call fails
+    return [
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        quantity: 50,
+        averageCost: 165.48,
+        marketValue: 15000,
+        unrealizedPnL: 942.00,
+        percentChange: 11.38,
+      },
+      {
+        symbol: 'MSFT',
+        name: 'Microsoft Corp.',
+        quantity: 25,
+        averageCost: 305.22,
+        marketValue: 12500,
+        unrealizedPnL: 824.75,
+        percentChange: 10.82,
+      },
+      {
+        symbol: 'GOOGL',
+        name: 'Alphabet Inc.',
+        quantity: 20,
+        averageCost: 132.18,
+        marketValue: 9500,
+        unrealizedPnL: 199.40,
+        percentChange: 7.54,
+      },
+      {
+        symbol: 'AMZN',
+        name: 'Amazon.com Inc.',
+        quantity: 15,
+        averageCost: 130.25,
+        marketValue: 8200,
+        unrealizedPnL: 231.45,
+        percentChange: 11.85,
+      },
+      {
+        symbol: 'XOM',
+        name: 'Exxon Mobil Corp.',
+        quantity: 30,
+        averageCost: 95.40,
+        marketValue: 7500,
+        unrealizedPnL: 564.10,
+        percentChange: 9.61,
+      },
+      {
+        symbol: 'NEE',
+        name: 'NextEra Energy Inc.',
+        quantity: 40,
+        averageCost: 75.20,
+        marketValue: 6000,
+        unrealizedPnL: 348.00,
+        percentChange: 8.25,
+      },
+      {
+        symbol: 'LIN',
+        name: 'Linde plc',
+        quantity: 10,
+        averageCost: 320.10,
+        marketValue: 5500,
+        unrealizedPnL: 178.90,
+        percentChange: 6.42,
+      },
+      {
+        symbol: 'HON',
+        name: 'Honeywell International Inc.',
+        quantity: 15,
+        averageCost: 210.30,
+        marketValue: 4800,
+        unrealizedPnL: 155.50,
+        percentChange: 5.18,
+      },
+      {
+        symbol: 'NFLX',
+        name: 'Netflix Inc.',
+        quantity: 10,
+        averageCost: 450.75,
+        marketValue: 4700,
+        unrealizedPnL: 292.50,
+        percentChange: 12.45,
+      },
+    ];
+  }
+};
+
 export default {
   getPortfolio,
   getTrades,
   getDividends,
   getPerformance,
+  getPositions,
 }; 

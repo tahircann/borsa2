@@ -1,0 +1,212 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Portfolio Ledger for {{ account.id }}</h3>
+            </div>
+            <div class="card-body">
+                {% if ledger and ledger|length > 0 %}
+                    <ul class="nav nav-tabs mb-3" id="currencyTabs" role="tablist">
+                        {% for currency, data in ledger.items() %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                        id="tab-{{ currency }}" 
+                                        data-bs-toggle="tab" 
+                                        data-bs-target="#currency-{{ currency }}" 
+                                        type="button" 
+                                        role="tab" 
+                                        aria-controls="currency-{{ currency }}" 
+                                        aria-selected="{% if loop.first %}true{% else %}false{% endif %}">
+                                    {{ currency }}
+                                </button>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                
+                    <div class="tab-content" id="currencyTabsContent">
+                        {% for currency, data in ledger.items() %}
+                            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                                id="currency-{{ currency }}" 
+                                role="tabpanel" 
+                                aria-labelledby="tab-{{ currency }}">
+                                
+                                <div class="row mb-4">
+                                    <div class="col-md-4">
+                                        <div class="card border-primary">
+                                            <div class="card-header bg-primary text-white">
+                                                <h5 class="mb-0">Net Value</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <h3 class="text-center">{{ data.netliquidationvalue|default(0)|round(2) }}</h3>
+                                                <p class="text-center text-muted">{{ currency }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="card border-success">
+                                            <div class="card-header bg-success text-white">
+                                                <h5 class="mb-0">Cash Balance</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <h3 class="text-center">{{ data.cashbalance|default(0)|round(2) }}</h3>
+                                                <p class="text-center text-muted">{{ currency }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="card {% if data.unrealizedpnl >= 0 %}border-success{% else %}border-danger{% endif %}">
+                                            <div class="card-header {% if data.unrealizedpnl >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white">
+                                                <h5 class="mb-0">Unrealized P&L</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <h3 class="text-center">{{ data.unrealizedpnl|default(0)|round(2) }}</h3>
+                                                <p class="text-center text-muted">{{ currency }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h4>Assets</h4>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Description</th>
+                                                        <th>Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>Stock Market Value</td>
+                                                        <td>{{ data.stockmarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Stock Option Market Value</td>
+                                                        <td>{{ data.stockoptionmarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Future Market Value</td>
+                                                        <td>{{ data.futuremarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Future Option Market Value</td>
+                                                        <td>{{ data.futureoptionmarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Commodity Market Value</td>
+                                                        <td>{{ data.commoditymarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Warrants Market Value</td>
+                                                        <td>{{ data.warrantsmarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Corporate Bonds Market Value</td>
+                                                        <td>{{ data.corporatebondsmarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>T-Bonds Market Value</td>
+                                                        <td>{{ data.tbondsmarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>T-Bills Market Value</td>
+                                                        <td>{{ data.tbillsmarketvalue|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Money Funds</td>
+                                                        <td>{{ data.moneyfunds|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Funds</td>
+                                                        <td>{{ data.funds|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h4>Cash & P&L</h4>
+                                        <div class="table-responsive">
+                                            <table class="table table-striped table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Description</th>
+                                                        <th>Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>Settled Cash</td>
+                                                        <td>{{ data.settledcash|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Cash Balance</td>
+                                                        <td>{{ data.cashbalance|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Realized P&L</td>
+                                                        <td>{{ data.realizedpnl|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Futures Only P&L</td>
+                                                        <td>{{ data.futuresonlypnl|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Interest</td>
+                                                        <td>{{ data.interest|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Dividends</td>
+                                                        <td>{{ data.dividends|default(0)|round(2) }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>Exchange Rate</td>
+                                                        <td>{{ data.exchangerate|default(1)|round(4) }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        No ledger data available for this account.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3>Raw Ledger Data</h3>
+                <small class="text-muted">Expand to see all raw data returned from API</small>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#rawDataCollapse">
+                    Show/Hide Raw Data
+                </button>
+                <div class="collapse" id="rawDataCollapse">
+                    <div class="card card-body">
+                        <pre>{{ ledger|tojson(indent=2) }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
