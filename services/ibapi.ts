@@ -741,13 +741,78 @@ export const getPerformance = async (period: string = '1m'): Promise<{
 
 export const getPositions = async (): Promise<any> => {
   try {
+    console.log('Fetching positions data from API...');
+    // Add timestamp to prevent caching
+    const timestamp = new Date().getTime();
     // Use direct URL since it's a local API outside the proxy system
-    const response = await axios.get('http://127.0.0.1:5056/positions');
-    console.log('Positions data received:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Failed to fetch positions data:', error);
+    const response = await axios.get(`http://localhost:5056/positions?_t=${timestamp}`, {
+      timeout: 8000 // 8 second timeout - increased from 5s
+    });
+    
+    console.log('Positions data received, status:', response.status);
+    
+    // Validate the data structure
+    if (response.data) {
+      // Check if we have an array of position objects with the expected structure
+      if (Array.isArray(response.data)) {
+        // Transform the API response to the format expected by the frontend
+        const transformedPositions = response.data.map((pos: any) => {
+          // Calculate percentChange if not provided
+          let percentChange = 0;
+          if (pos.unrealizedPnl && pos.marketValue && pos.avgCost && pos.position) {
+            const costBasis = pos.avgCost * pos.position;
+            if (costBasis !== 0) {
+              percentChange = (pos.unrealizedPnl / costBasis) * 100;
+            }
+          }
+
+          return {
+            symbol: pos.symbol || pos.description || pos.conid || 'Unknown',
+            name: pos.name || pos.description || 'Unknown',
+            quantity: pos.quantity || pos.position || 0,
+            averageCost: pos.averageCost || pos.avgCost || 0,
+            marketValue: pos.marketValue || (pos.marketPrice * pos.position) || 0,
+            unrealizedPnL: pos.unrealizedPnL || pos.unrealizedPnl || 0,
+            percentChange: pos.percentChange || percentChange || 0,
+            // Add additional fields that might be useful
+            sector: pos.sector || null,
+            group: pos.group || null,
+            assetClass: pos.assetClass || null
+          };
+        });
+
+        console.log(`Transformed ${transformedPositions.length} positions`);
+        return transformedPositions;
+      } else {
+        console.warn('API returned non-array data:', response.data);
+        throw new Error('Invalid data format returned from API');
+      }
+    } else {
+      console.error('API returned null or undefined data');
+      throw new Error('Empty data returned from API');
+    }
+  } catch (error: any) {
+    console.error('Failed to fetch positions data:', error.message);
+    
+    // More detailed error logging to help diagnose the issue
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Server responded with error:', {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('No response received from server. Is the API running?');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Error setting up request:', error.message);
+    }
+    
     // Return mock data when API call fails
+    console.warn('Returning mock position data instead');
     return [
       {
         symbol: 'AAPL',

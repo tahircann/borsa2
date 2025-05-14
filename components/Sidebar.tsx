@@ -9,7 +9,8 @@ import {
   FiBriefcase,
   FiPieChart,
   FiGrid,
-  FiLock 
+  FiLock,
+  FiList
 } from 'react-icons/fi'
 import { useAuth } from '../utils/auth'
 
@@ -26,6 +27,7 @@ export default function Sidebar() {
   
   const navigation: NavItem[] = [
     { name: 'Home', href: '/', icon: <FiHome className="h-5 w-5" /> },
+    { name: 'Positions', href: '/positions', icon: <FiList className="h-5 w-5" /> },
     { name: 'Trades', href: '/trades', icon: <FiTrendingUp className="h-5 w-5" /> },
     { name: 'Portfolio Stock Ranks', href: '/portfolio-stock-ranks', icon: <FiBarChart2 className="h-5 w-5" /> },
     { name: 'Performance', href: '/performance', icon: <FiPieChart className="h-5 w-5" /> },

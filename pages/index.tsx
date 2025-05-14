@@ -1,32 +1,35 @@
-import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiBarChart2 } from 'react-icons/fi'
+import { FiTrendingUp, FiTrendingDown, FiExternalLink } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
-import DashboardCard from '@/components/DashboardCard'
 import StockChart from '@/components/StockChart'
-import { getPerformance } from '../services/ibapi'
-import { formatCurrency, formatNumber } from '../utils/formatters'
+import PerformanceChart from '@/components/PerformanceChart'
+import AllocationChart from '@/components/AllocationChart'
+import { getPerformance, getPortfolio, getAllocation } from '../services/ibapi'
+import { formatCurrency, formatPercent } from '../utils/formatters'
 
 export default function Home() {
   const [period, setPeriod] = useState('1m')
   const [performance, setPerformance] = useState<any>(null)
+  const [portfolio, setPortfolio] = useState<any>(null)
+  const [allocation, setAllocation] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  // Mock data
-  const portfolioValue = 125842.65
-  const portfolioChange = 2.34
-  const portfolioChangeAmount = 2876.32
-  const totalTrades = 42
-  const successfulTrades = 28
-  const winRate = (successfulTrades / totalTrades) * 100
-  const dividends = 842.12
-  
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
+        // Fetch performance data
         const performanceData = await getPerformance(period)
         setPerformance(performanceData)
+        
+        // Fetch portfolio data
+        const portfolioData = await getPortfolio()
+        setPortfolio(portfolioData)
+        
+        // Fetch allocation data
+        const allocationData = await getAllocation()
+        setAllocation(allocationData)
       } catch (error) {
-        console.error('Error fetching performance data:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
@@ -55,34 +58,69 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <DashboardCard 
-          title="Portfolio Value" 
-          value={formatCurrency(portfolioValue)} 
-          change={portfolioChange}
-          icon={<FiDollarSign className="h-6 w-6 text-primary-600" />}
-        />
-        <DashboardCard 
-          title="Win Rate" 
-          value={`${winRate.toFixed(1)}%`} 
-          change={4.2}
-          icon={<FiTrendingUp className="h-6 w-6 text-green-600" />}
-        />
-        <DashboardCard 
-          title="Total Trades" 
-          value={formatNumber(totalTrades)} 
-          change={12.5}
-          icon={<FiBarChart2 className="h-6 w-6 text-indigo-600" />}
-        />
-        <DashboardCard 
-          title="Dividends" 
-          value={formatCurrency(dividends)}
-          change={1.8}
-          icon={<FiDollarSign className="h-6 w-6 text-yellow-600" />}
-        />
-      </div>
+      {/* Performance Cards */}
+      {performance && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="text-sm text-gray-500 mb-1">Starting Value</div>
+            <div className="text-2xl font-semibold">
+              {loading ? (
+                '-'
+              ) : (
+                <>$
+                  {performance.startValue.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </>
+              )}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="text-sm text-gray-500 mb-1">Current Value</div>
+            <div className="text-2xl font-semibold">
+              {loading ? (
+                '-'
+              ) : (
+                <>$
+                  {performance.endValue.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </>
+              )}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="text-sm text-gray-500 mb-1">Performance</div>
+            {loading ? (
+              <div className="text-2xl font-semibold">-</div>
+            ) : (
+              <div
+                className={`text-2xl font-semibold flex items-center ${
+                  performance.percentChange >= 0
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}
+              >
+                {performance.percentChange >= 0 ? (
+                  <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+                {Math.abs(performance.percentChange || 0).toFixed(2)}%
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Portfolio Performance Chart */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
@@ -92,10 +130,10 @@ export default function Home() {
               <div className="h-80 flex items-center justify-center">
                 <p>Loading...</p>
               </div>
-            ) : performance ? (
+            ) : performance && performance.data ? (
               <div>
                 <div className="h-80">
-                  <StockChart period={period} />
+                  <PerformanceChart data={performance.data} />
                 </div>
                 <div className="flex justify-between mt-4 text-sm text-gray-500">
                   <div>
@@ -121,33 +159,69 @@ export default function Home() {
             )}
           </div>
         </div>
+
+        {/* Top Holdings from Portfolio */}
         <div>
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-lg font-semibold mb-4">Top Holdings</h2>
             <div className="space-y-4">
-              {[
-                { symbol: 'AAPL', name: 'Apple Inc.', price: 184.32, change: 1.2 },
-                { symbol: 'MSFT', name: 'Microsoft Corp.', price: 338.21, change: -0.8 },
-                { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 145.68, change: 2.3 },
-                { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 142.15, change: 0.5 },
-                { symbol: 'TSLA', name: 'Tesla Inc.', price: 176.83, change: -1.2 }
-              ].map((stock) => (
-                <div key={stock.symbol} className="flex justify-between items-center border-b border-gray-100 pb-2">
-                  <div>
-                    <div className="font-medium">{stock.symbol}</div>
-                    <div className="text-sm text-gray-500">{stock.name}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">${stock.price}</div>
-                    <div className={`text-sm ${stock.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {stock.change >= 0 ? <FiTrendingUp className="inline mr-1 h-3 w-3" /> : <FiTrendingDown className="inline mr-1 h-3 w-3" />}
-                      {stock.change >= 0 ? '+' : ''}{stock.change}%
-                    </div>
-                  </div>
+              {loading ? (
+                <div className="flex justify-center items-center h-40">
+                  <p>Loading...</p>
                 </div>
-              ))}
+              ) : portfolio && portfolio.positions ? (
+                portfolio.positions
+                  .sort((a: any, b: any) => b.marketValue - a.marketValue)
+                  .slice(0, 5)
+                  .map((position: any) => (
+                    <div key={position.symbol} className="flex justify-between items-center border-b border-gray-100 pb-2">
+                      <div>
+                        <div className="font-medium">{position.symbol}</div>
+                        <div className="text-sm text-gray-500">{position.name}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium">${position.marketValue.toFixed(2)}</div>
+                        <div className={`text-sm ${position.percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {position.percentChange >= 0 ? 
+                            <FiTrendingUp className="inline mr-1 h-3 w-3" /> : 
+                            <FiTrendingDown className="inline mr-1 h-3 w-3" />
+                          }
+                          {position.percentChange >= 0 ? '+' : ''}{position.percentChange.toFixed(2)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="flex justify-center items-center h-40">
+                  <p>No holdings data available</p>
+                </div>
+              )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Sector Allocation Chart */}
+      <div className="mt-6">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-lg font-semibold mb-4">Sector Allocation</h2>
+          {loading ? (
+            <div className="h-60 flex items-center justify-center">
+              <p>Loading...</p>
+            </div>
+          ) : allocation && allocation.sector && allocation.sector.length > 0 ? (
+            <div className="h-60">
+              <AllocationChart 
+                data={allocation.sector} 
+                totalValue={allocation.sector.reduce((sum: number, item: any) => sum + item.value, 0)} 
+                title="Sector" 
+              />
+            </div>
+          ) : (
+            <div className="h-60 flex items-center justify-center">
+              <p>No sector allocation data available</p>
+            </div>
+          )}
         </div>
       </div>
     </>
