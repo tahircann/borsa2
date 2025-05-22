@@ -328,7 +328,7 @@ export default function Home() {
                           <div className="text-sm text-gray-500">{position.name}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-medium text-gray-800">{position.marketValue.toFixed(2)} pts</div>
+                          <div className="font-medium text-gray-800">${position.marketValue.toFixed(2)}</div>
                           <div className={`text-sm ${position.percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}
                           >
                             {position.percentChange >= 0 ? 
@@ -379,18 +379,6 @@ export default function Home() {
       </div>
     );
   };
-  
-  // Show loading state while checking subscription
-  if (subscriptionLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your personalized dashboard...</p>
-        </div>
-      </div>
-    );
-  }
   
   return (
     <>

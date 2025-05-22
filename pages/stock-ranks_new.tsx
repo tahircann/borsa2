@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { FiInfo, FiFilter, FiRefreshCw, FiArrowRight } from 'react-icons/fi'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import BlurOverlay from '../components/BlurOverlay'
-import { useSubscription } from '../utils/subscription'
+import { useAuth } from '../utils/auth'
+import { SubscriptionContext } from '@/components/Layout'
+import BlurOverlay from '@/components/BlurOverlay'
 
 // Mock API service for demonstration
 const mockStockData = [
@@ -108,7 +109,9 @@ export default function StockRanks() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filterOpen, setFilterOpen] = useState(false)
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const router = useRouter()
+  const { user, isAuthenticated } = useAuth()
   
   // Fetch stock data from portfolio-stock-ranks
   useEffect(() => {
@@ -169,8 +172,7 @@ export default function StockRanks() {
   });
 
   return (
-    <BlurOverlay>
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Stock Ranks</h1>
@@ -416,10 +418,10 @@ export default function StockRanks() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {stock.price.toFixed(2)} pts
+                      ${stock.price.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {stock.targetPrice.toFixed(2)} pts
+                      ${stock.targetPrice.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       {formatWithSign(stock.annualReturn)}
@@ -442,6 +444,5 @@ export default function StockRanks() {
         </Link>
       </div>
     </div>
-    </BlurOverlay>
   )
 }
