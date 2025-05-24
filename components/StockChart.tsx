@@ -62,56 +62,105 @@ export default function StockChart({ period }: StockChartProps) {
       // Create new chart
       const ctx = chartRef.current.getContext('2d')
       if (ctx) {
+        // Create gradient for the chart
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(34, 197, 94, 0.3)'); // Green with transparency
+        gradient.addColorStop(1, 'rgba(34, 197, 94, 0.05)');
+
         chartInstance.current = new Chart(ctx, {
           type: 'line',
           data: {
             labels,
             datasets: [{
-              label: 'Portfolio Value ($)',
+              label: 'Portfolio Value',
               data,
-              borderColor: '#0284c7',
-              backgroundColor: 'rgba(2, 132, 199, 0.1)',
-              borderWidth: 2,
+              borderColor: '#22C55E', // Modern green
+              backgroundColor: gradient,
+              borderWidth: 3,
               fill: true,
               tension: 0.4,
               pointRadius: 0,
-              pointHoverRadius: 4
+              pointHoverRadius: 6,
+              pointHoverBackgroundColor: '#16A34A',
+              pointHoverBorderColor: '#FFFFFF',
+              pointHoverBorderWidth: 3,
             }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+              intersect: false,
+              mode: 'index',
+            },
+            animation: {
+              duration: 1000,
+              easing: 'easeOutQuart',
+            },
             plugins: {
               legend: {
                 display: false
               },
               tooltip: {
-                mode: 'index',
-                intersect: false,
+                backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                titleColor: '#F9FAFB',
+                bodyColor: '#F9FAFB',
+                borderColor: '#E5E7EB',
+                borderWidth: 1,
+                cornerRadius: 8,
+                displayColors: false,
+                titleFont: {
+                  size: 14,
+                  weight: 600,
+                },
+                bodyFont: {
+                  size: 13,
+                },
+                padding: 12,
                 callbacks: {
                   label: function(context) {
-                    return formatChartCurrency(context.parsed.y);
+                    return `Portfolio Value: ${formatChartCurrency(context.parsed.y)}`;
                   }
                 }
               }
             },
             scales: {
               x: {
+                display: true,
                 grid: {
                   display: false
                 },
+                border: {
+                  display: false,
+                },
                 ticks: {
-                  maxTicksLimit: 10
+                  color: '#6B7280',
+                  font: {
+                    size: 12,
+                    weight: 400,
+                  },
+                  maxTicksLimit: 8
                 }
               },
               y: {
+                display: true,
+                position: 'left',
                 grid: {
-                  color: 'rgba(0, 0, 0, 0.1)'
+                  color: 'rgba(156, 163, 175, 0.2)',
+                },
+                border: {
+                  display: false,
                 },
                 ticks: {
+                  color: '#6B7280',
+                  font: {
+                    size: 12,
+                    weight: 400,
+                  },
                   callback: function(value) {
                     return formatChartCurrency(Number(value));
-                  }
+                  },
+                  padding: 8,
                 }
               }
             }

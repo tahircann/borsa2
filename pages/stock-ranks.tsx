@@ -1,447 +1,377 @@
-import { useState, useEffect } from 'react'
-import { FiInfo, FiFilter, FiRefreshCw, FiArrowRight } from 'react-icons/fi'
-import Link from 'next/link'
-import { useRouter } from 'next/router'
-import BlurOverlay from '../components/BlurOverlay'
-import { useSubscription } from '../utils/subscription'
-
-// Mock API service for demonstration
-const mockStockData = [
-  {
-    symbol: 'AAPL',
-    company: 'Apple Inc.',
-    price: 182.63,
-    stockScore: 87,
-    nextQuarterEarning: 2.8,
-    annualEarningGrowth: 8.4,
-    growth: 15.7,
-    valuation: -2.3,
-    technicalScore: 75,
-    seasonalityShort: 82,
-    seasonalityLong: 68,
-    targetPrice: 210.50,
-    annualReturn: 12.8
-  },
-  {
-    symbol: 'MSFT',
-    company: 'Microsoft Corporation',
-    price: 402.75,
-    stockScore: 92,
-    nextQuarterEarning: 3.5,
-    annualEarningGrowth: 10.2,
-    growth: 18.3,
-    valuation: -1.9,
-    technicalScore: 88,
-    seasonalityShort: 76,
-    seasonalityLong: 85,
-    targetPrice: 455.00,
-    annualReturn: 14.7
-  },
-  {
-    symbol: 'GOOGL',
-    company: 'Alphabet Inc.',
-    price: 176.25,
-    stockScore: 85,
-    nextQuarterEarning: 2.4,
-    annualEarningGrowth: 7.9,
-    growth: 14.1,
-    valuation: -0.8,
-    technicalScore: 71,
-    seasonalityShort: 64,
-    seasonalityLong: 79,
-    targetPrice: 195.00,
-    annualReturn: 11.5
-  },
-  {
-    symbol: 'AMZN',
-    company: 'Amazon.com Inc.',
-    price: 185.07,
-    stockScore: 81,
-    nextQuarterEarning: 1.2,
-    annualEarningGrowth: 6.7,
-    growth: 12.9,
-    valuation: -3.4,
-    technicalScore: 68,
-    seasonalityShort: 72,
-    seasonalityLong: 74,
-    targetPrice: 210.00,
-    annualReturn: 9.8
-  },
-  {
-    symbol: 'META',
-    company: 'Meta Platforms Inc.',
-    price: 493.50,
-    stockScore: 78,
-    nextQuarterEarning: 2.0,
-    annualEarningGrowth: 5.4,
-    growth: 11.2,
-    valuation: -2.7,
-    technicalScore: 70,
-    seasonalityShort: 68,
-    seasonalityLong: 65,
-    targetPrice: 520.00,
-    annualReturn: 8.6
-  }
-];
-
-// Define stock info interface
-interface StockInfo {
-  symbol: string;
-  company: string;
-  price: number;
-  stockScore: number;
-  nextQuarterEarning: number;
-  annualEarningGrowth: number;
-  growth: number;
-  valuation: number;
-  technicalScore: number;
-  seasonalityShort: number;
-  seasonalityLong: number;
-  targetPrice: number;
-  annualReturn: number;
-}
+import { useState, useEffect } from 'react';
+import { FiInfo, FiFilter, FiRefreshCw, FiTrendingUp, FiTrendingDown, FiBarChart } from 'react-icons/fi';
+import { useRouter } from 'next/router';
+import BlurOverlay from '../components/BlurOverlay';
+import { useSubscription } from '../utils/subscription';
+import USStockChart from '../components/USStockChart';
+import { alphaVantageAPI, USStockData } from '../services/alphaVantageApi';
 
 export default function StockRanks() {
-  const [sortColumn, setSortColumn] = useState<string>('stockScore')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [stocks, setStocks] = useState<StockInfo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [filterOpen, setFilterOpen] = useState(false)
-  const router = useRouter()
+  const [sortColumn, setSortColumn] = useState<string>('changePercent');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [stocks, setStocks] = useState<USStockData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedStock, setSelectedStock] = useState<USStockData | null>(null);
+  const [showChart, setShowChart] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const router = useRouter();
   
-  // Fetch stock data from portfolio-stock-ranks
+  // Fetch US stock data
   useEffect(() => {
-    const loadStockData = async () => {
-      try {
-        setLoading(true)
-        
-        // In a real implementation, this would be an API call to fetch data
-        // For demonstration, we're using mock data
-        setTimeout(() => {
-          setStocks(mockStockData)
-          setLoading(false)
-        }, 1000)
-      } catch (err) {
-        console.error('Error loading stock data:', err)
-        setError('Failed to load stock data. Please try again later.')
-        setLoading(false)
-      }
-    }
+    loadStockData();
     
-    loadStockData()
-  }, [])
+    // Set up auto refresh every 60 seconds
+    const interval = setInterval(loadStockData, 60000);
+    setRefreshInterval(interval);
+    
+    return () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+    };
+  }, []);
+
+  const loadStockData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Try to get real data first, fallback to mock data
+      let stockData: USStockData[] = [];
+      
+      try {
+        stockData = await alphaVantageAPI.getPopularStocks();
+        
+        // If no data or limited data, supplement with mock data
+        if (stockData.length < 5) {
+          const mockData = alphaVantageAPI.getMockStockData();
+          stockData = [...stockData, ...mockData.slice(stockData.length)];
+        }
+      } catch (apiError) {
+        console.warn('API failed, using mock data:', apiError);
+        stockData = alphaVantageAPI.getMockStockData();
+      }
+      
+      setStocks(stockData);
+    } catch (err) {
+      console.error('Error loading stock data:', err);
+      setError('Failed to load stock data. Please try again later.');
+      setStocks(alphaVantageAPI.getMockStockData());
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Handle column sorting
   const handleSort = (column: string) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      setSortColumn(column)
-      setSortDirection('desc') // Default to descending for most financial metrics
+      setSortColumn(column);
+      setSortDirection('desc');
     }
-  }
+  };
   
-  // Helper function to get color class based on score value
-  function getScoreColorClass(score: number): string {
-    if (score >= 80) return 'bg-green-100 text-green-800';
-    if (score >= 60) return 'bg-blue-100 text-blue-800';
-    if (score >= 40) return 'bg-yellow-100 text-yellow-800';
-    if (score >= 20) return 'bg-orange-100 text-orange-800';
-    return 'bg-red-100 text-red-800';
-  }
+  // Handle stock click for chart display
+  const handleStockClick = (stock: USStockData) => {
+    setSelectedStock(stock);
+    setShowChart(true);
+  };
+
+  const closeChart = () => {
+    setShowChart(false);
+    setSelectedStock(null);
+  };
   
-  // Helper function to format values with +/- sign
-  function formatWithSign(value: number): string {
-    return value >= 0 ? `+${value.toFixed(2)}%` : `${value.toFixed(2)}%`;
-  }
+  // Helper function to get color class based on percentage change
+  const getChangeColorClass = (change: number): string => {
+    if (change > 0) return 'text-green-600';
+    if (change < 0) return 'text-red-600';
+    return 'text-gray-600';
+  };
+
+  // Format market cap
+  const formatMarketCap = (value?: number): string => {
+    if (!value) return 'N/A';
+    if (value >= 1e12) return `$${(value / 1e12).toFixed(1)}T`;
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+    return `$${value.toLocaleString()}`;
+  };
+
+  // Format volume
+  const formatVolume = (value: number): string => {
+    if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+    if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+    if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
+    return value.toLocaleString();
+  };
 
   // Sorting logic
   const sortedStocks = [...stocks].sort((a, b) => {
-    const aValue = a[sortColumn as keyof StockInfo] as number;
-    const bValue = b[sortColumn as keyof StockInfo] as number;
+    const aValue = a[sortColumn as keyof USStockData];
+    const bValue = b[sortColumn as keyof USStockData];
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortDirection === 'asc' 
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    }
+    
+    const aNum = Number(aValue) || 0;
+    const bNum = Number(bValue) || 0;
     
     if (sortDirection === 'asc') {
-      return aValue - bValue;
+      return aNum - bNum;
     } else {
-      return bValue - aValue;
+      return bNum - aNum;
     }
   });
 
   return (
     <BlurOverlay>
       <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Stock Ranks</h1>
-          <p className="text-gray-600">Stocks ranked by performance, growth, and investment quality</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Link 
-            href="/portfolio-stock-ranks" 
-            className="flex items-center bg-blue-50 border border-blue-200 text-blue-700 rounded-md py-2 px-4 text-sm hover:bg-blue-100 transition-colors"
-          >
-            View Portfolio Stocks <FiArrowRight className="ml-1" />
-          </Link>
-          <button 
-            onClick={() => setFilterOpen(!filterOpen)}
-            className="flex items-center bg-white border border-gray-300 rounded-md py-2 px-4 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            <FiFilter className="mr-2 h-4 w-4" />
-            Filter
-          </button>
-        </div>
-      </div>
-
-      {filterOpen && (
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-100">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Stock Score Range</label>
-              <div className="flex items-center space-x-2">
-                <input type="number" min="0" max="100" placeholder="Min" className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm" />
-                <span>-</span>
-                <input type="number" min="0" max="100" placeholder="Max" className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Growth Range</label>
-              <div className="flex items-center space-x-2">
-                <input type="number" placeholder="Min %" className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm" />
-                <span>-</span>
-                <input type="number" placeholder="Max %" className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm" />
-              </div>
-            </div>
-            <div className="flex items-end">
-              <button className="bg-blue-600 text-white rounded-md py-2 px-4 text-sm hover:bg-blue-700 w-full">
-                Apply Filters
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex items-start">
-          <div className="rounded-full bg-blue-100 p-2 mr-3">
-            <FiInfo className="h-5 w-5 text-blue-600" />
-          </div>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
           <div>
-            <h3 className="font-medium text-gray-900">About Stock Ranks</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Stocks are ranked based on a proprietary algorithm that considers growth potential, 
-              valuation, financial strength, dividend yield, and technical factors. 
-              The ranking scale goes from 0-100, with higher scores indicating stronger investment potential.
-            </p>
+            <h1 className="text-2xl font-bold text-slate-800">US Stock Rankings</h1>
+            <p className="text-gray-600">Real-time data for popular American stocks with interactive charts</p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={loadStockData}
+              disabled={loading}
+              className="flex items-center bg-green-50 border border-green-200 text-green-700 rounded-md py-2 px-4 text-sm hover:bg-green-100 transition-colors disabled:opacity-50"
+            >
+              <FiRefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh Data
+            </button>
+            <button 
+              onClick={() => setFilterOpen(!filterOpen)}
+              className="flex items-center bg-white border border-gray-300 rounded-md py-2 px-4 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <FiFilter className="mr-2 h-4 w-4" />
+              Filter
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('company')}
-                >
-                  Company
-                  {sortColumn === 'company' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('stockScore')}
-                >
-                  Stock Score
-                  {sortColumn === 'stockScore' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('nextQuarterEarning')}
-                >
-                  Next Quarter
-                  {sortColumn === 'nextQuarterEarning' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('annualEarningGrowth')}
-                >
-                  Annual Earning
-                  {sortColumn === 'annualEarningGrowth' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('growth')}
-                >
-                  Growth
-                  {sortColumn === 'growth' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('valuation')}
-                >
-                  Valuation
-                  {sortColumn === 'valuation' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('technicalScore')}
-                >
-                  Technical
-                  {sortColumn === 'technicalScore' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('seasonalityShort')}
-                >
-                  Short Season
-                  {sortColumn === 'seasonalityShort' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('seasonalityLong')}
-                >
-                  Long Season
-                  {sortColumn === 'seasonalityLong' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('price')}
-                >
-                  Price Now
-                  {sortColumn === 'price' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('targetPrice')}
-                >
-                  Target Price
-                  {sortColumn === 'targetPrice' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-                <th 
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('annualReturn')}
-                >
-                  Annual Return
-                  {sortColumn === 'annualReturn' && (
-                    <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
+        {filterOpen && (
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-100">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price Range ($)</label>
+                <div className="flex items-center space-x-2">
+                  <input type="number" min="0" placeholder="Min" className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm" />
+                  <span>-</span>
+                  <input type="number" placeholder="Max" className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Change Range (%)</label>
+                <div className="flex items-center space-x-2">
+                  <input type="number" placeholder="Min %" className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm" />
+                  <span>-</span>
+                  <input type="number" placeholder="Max %" className="w-full border border-gray-300 rounded-md py-2 px-3 text-sm" />
+                </div>
+              </div>
+              <div className="flex items-end">
+                <button className="bg-blue-600 text-white rounded-md py-2 px-4 text-sm hover:bg-blue-700 w-full">
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+          <div className="flex items-start">
+            <div className="rounded-full bg-blue-100 p-2 mr-3">
+              <FiInfo className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">About US Stock Rankings</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Real-time data for popular American stocks including price, market cap, P/E ratio, and more. 
+                Click on any stock to view detailed interactive charts and get real-time price updates.
+                Data is updated every minute during market hours.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={12} className="px-6 py-10 text-center">
-                    <div className="flex justify-center items-center">
-                      <FiRefreshCw className="animate-spin h-5 w-5 mr-2 text-blue-600" />
-                      <span>Loading stock data...</span>
-                    </div>
-                  </td>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('symbol')}
+                  >
+                    Symbol
+                    {sortColumn === 'symbol' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('company')}
+                  >
+                    Company
+                    {sortColumn === 'company' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('price')}
+                  >
+                    Price
+                    {sortColumn === 'price' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('change')}
+                  >
+                    Change
+                    {sortColumn === 'change' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('changePercent')}
+                  >
+                    Change %
+                    {sortColumn === 'changePercent' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('volume')}
+                  >
+                    Volume
+                    {sortColumn === 'volume' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('marketCap')}
+                  >
+                    Market Cap
+                    {sortColumn === 'marketCap' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('pe')}
+                  >
+                    P/E
+                    {sortColumn === 'pe' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Chart
+                  </th>
                 </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan={12} className="px-6 py-10 text-center text-red-600">
-                    {error}
-                  </td>
-                </tr>
-              ) : sortedStocks.length === 0 ? (
-                <tr>
-                  <td colSpan={12} className="px-6 py-10 text-center">
-                    No stock data available.
-                  </td>
-                </tr>
-              ) : (
-                sortedStocks.map((stock) => (
-                  <tr key={stock.symbol} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <div className="flex items-center">
-                        <div className="font-medium">{stock.symbol}</div>
-                        <div className="text-gray-500 ml-2 text-xs">{stock.company}</div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-10 text-center">
+                      <div className="flex justify-center items-center">
+                        <FiRefreshCw className="animate-spin h-5 w-5 mr-2 text-blue-600" />
+                        <span>Loading US stock data...</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColorClass(stock.stockScore)}`}>
-                        {stock.stockScore}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {formatWithSign(stock.nextQuarterEarning)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {formatWithSign(stock.annualEarningGrowth)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {formatWithSign(stock.growth)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {formatWithSign(stock.valuation)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColorClass(stock.technicalScore)}`}>
-                        {stock.technicalScore}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColorClass(stock.seasonalityShort)}`}>
-                        {stock.seasonalityShort}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreColorClass(stock.seasonalityLong)}`}>
-                        {stock.seasonalityLong}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {stock.price.toFixed(2)} pts
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {stock.targetPrice.toFixed(2)} pts
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      {formatWithSign(stock.annualReturn)}
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-10 text-center text-red-600">
+                      {error}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : sortedStocks.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-10 text-center">
+                      No stock data available.
+                    </td>
+                  </tr>
+                ) : (
+                  sortedStocks.map((stock) => (
+                    <tr key={stock.symbol} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleStockClick(stock)}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                        {stock.symbol}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="font-medium">{stock.company}</div>
+                        <div className="text-xs text-gray-500">{stock.timestamp}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                        ${stock.price.toFixed(2)}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${getChangeColorClass(stock.change)}`}>
+                        <div className="flex items-center justify-end">
+                          {stock.change > 0 ? <FiTrendingUp className="mr-1 h-3 w-3" /> : 
+                           stock.change < 0 ? <FiTrendingDown className="mr-1 h-3 w-3" /> : null}
+                          {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)}
+                        </div>
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${getChangeColorClass(stock.changePercent)}`}>
+                        {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        {formatVolume(stock.volume)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        {formatMarketCap(stock.marketCap)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        {stock.pe?.toFixed(1) || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStockClick(stock);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <FiBarChart className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div className="mt-6 flex justify-between items-center">
+          <div className="text-sm text-gray-500">
+            Showing {sortedStocks.length} US stocks • Updated every 60 seconds
+          </div>
+          <div className="text-xs text-gray-400">
+            Click on any row to view detailed charts and real-time data
+          </div>
         </div>
       </div>
-      
-      <div className="mt-6 flex justify-between items-center">
-        <div className="text-sm text-gray-500">Showing {sortedStocks.length} stocks</div>
-        <Link 
-          href="/portfolio-stock-ranks" 
-          className="flex items-center text-blue-600 hover:text-blue-800"
-        >
-          View detailed portfolio analysis <FiArrowRight className="ml-1" />
-        </Link>
-      </div>
-    </div>
+
+      {/* Chart Modal */}
+      {showChart && selectedStock && (
+        <USStockChart 
+          symbol={selectedStock.symbol}
+          stockData={selectedStock}
+          onClose={closeChart}
+        />
+      )}
     </BlurOverlay>
-  )
-}
+  );
+} 

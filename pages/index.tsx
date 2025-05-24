@@ -3,7 +3,7 @@ import { useState, useEffect, useContext } from 'react'
 import StockChart from '@/components/StockChart'
 import PerformanceChart from '@/components/PerformanceChart'
 import AllocationChart from '@/components/AllocationChart'
-import { getPerformance, getPortfolio, getAllocation } from '../services/ibapi'
+import { getPerformance, getPortfolio, getAllocation, getSP500Data } from '../services/ibapi'
 import { formatCurrency, formatPercent } from '../utils/formatters'
 import { SubscriptionContext } from '@/components/Layout'
 import BlurOverlay from '@/components/BlurOverlay'
@@ -16,6 +16,7 @@ export default function Home() {
   const [performance, setPerformance] = useState<any>(null)
   const [portfolio, setPortfolio] = useState<any>(null)
   const [allocation, setAllocation] = useState<any>(null)
+  const [sp500Data, setSp500Data] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -25,17 +26,18 @@ export default function Home() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // Fetch performance data
-        const performanceData = await getPerformance(period)
-        setPerformance(performanceData)
+        // Fetch all data concurrently
+        const [performanceResult, portfolioResult, allocationResult, sp500Result] = await Promise.all([
+          getPerformance(period),
+          getPortfolio(),
+          getAllocation(),
+          getSP500Data(period)
+        ])
         
-        // Fetch portfolio data
-        const portfolioData = await getPortfolio()
-        setPortfolio(portfolioData)
-        
-        // Fetch allocation data
-        const allocationData = await getAllocation()
-        setAllocation(allocationData)
+        setPerformance(performanceResult)
+        setPortfolio(portfolioResult)
+        setAllocation(allocationResult)
+        setSp500Data(sp500Result)
       } catch (error) {
         console.error('Error fetching data:', error)
         if (error instanceof Error) {
@@ -212,7 +214,7 @@ export default function Home() {
               
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-800">Performance</h2>
+                  <h2 className="text-xl font-semibold text-gray-800">Performance vs S&P 500</h2>
                   <p className="text-gray-500">Percentage change over time</p>
                 </div>
                 <div className="flex space-x-2">
@@ -250,7 +252,10 @@ export default function Home() {
               ) : performance && performance.data ? (
                 <>
                   <div className="h-80">
-                    <PerformanceChart data={performance.data} />
+                    <PerformanceChart 
+                      data={performance.data} 
+                      spData={sp500Data?.data || undefined}
+                    />
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4">

@@ -3,20 +3,87 @@ import { FiTrendingUp, FiTrendingDown, FiExternalLink } from 'react-icons/fi'
 import { getPortfolio, type Portfolio, type Position } from '@/services/ibapi'
 import { formatCurrency, formatPercent } from '../utils/formatters'
 
+// Helper function to check if a stock was purchased within the last 24 hours
+const isNewBuy = (purchaseDate?: string): boolean => {
+  if (!purchaseDate) return false;
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const purchaseDateTime = new Date(purchaseDate);
+    return purchaseDateTime > oneDayAgo;
+  } catch (error) {
+    console.error('Error parsing purchase date:', purchaseDate, error);
+    return false;
+  }
+};
+
+// Helper function to format purchase date
+const formatPurchaseDate = (purchaseDate?: string): string => {
+  if (!purchaseDate) return '-';
+  try {
+    const date = new Date(purchaseDate);
+    if (isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return '-';
+  }
+};
+
+// Helper function to format dividend information
+const formatDividend = (dividendYield?: number, marketValue?: number): string => {
+  if (!dividendYield || dividendYield === 0) return '-';
+  
+  const percentage = (dividendYield * 100).toFixed(2);
+  if (marketValue) {
+    const annualDividend = marketValue * dividendYield;
+    return `${percentage}% ($${annualDividend.toFixed(2)})`;
+  }
+  return `${percentage}%`;
+};
+
 export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [dataSource, setDataSource] = useState<string>('unknown')
   const [sortColumn, setSortColumn] = useState('marketValue')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     const fetchPortfolio = async () => {
       setLoading(true)
+      setError(null)
       try {
         const result = await getPortfolio()
         setPortfolio(result)
+        
+        // Determine data source based on whether we have real API data
+        const hasRealDividendData = result.positions.some(pos => 
+          pos.dividendYield !== undefined && pos.dividendYield !== null && pos.dividendYield > 0
+        );
+        const hasRealCountryData = result.positions.some(pos => 
+          pos.country && pos.country !== 'USA' && pos.country !== 'United States'
+        );
+        const hasRecentPurchases = result.positions.some(pos => 
+          pos.purchaseDate && new Date(pos.purchaseDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        );
+        const hasNewBuys = result.positions.some(pos => isNewBuy(pos.purchaseDate));
+        
+        if (hasRealDividendData && hasRealCountryData && hasNewBuys) {
+          setDataSource('Live Data (IBKR + Alpha Vantage + Real Trades)');
+        } else if (hasRealDividendData || hasRealCountryData) {
+          setDataSource('Mixed Data (IBKR + Alpha Vantage)');
+        } else if (hasRecentPurchases) {
+          setDataSource('IBKR API with Mock Enhancement');
+        } else {
+          setDataSource('Demo Data for Testing');
+        }
       } catch (error) {
         console.error('Failed to fetch portfolio:', error)
+        setError('Failed to load portfolio data. Please check your API connections.')
       } finally {
         setLoading(false)
       }
@@ -56,7 +123,10 @@ export default function PortfolioPage() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Portfolio</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Portfolio</h1>
+          <p className="text-sm text-gray-500 mt-1">Data source: {dataSource}</p>
+        </div>
         {portfolio && (
           <div className="flex items-center space-x-6">
             <div>
@@ -70,6 +140,16 @@ export default function PortfolioPage() {
           </div>
         )}
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+          <h3 className="font-semibold">Error Loading Portfolio</h3>
+          <p className="text-sm mt-1">{error}</p>
+          <p className="text-xs mt-2">
+            Check that your Alpha Vantage API key is configured and IBKR API is accessible.
+          </p>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
@@ -133,18 +213,30 @@ export default function PortfolioPage() {
                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Dividend
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Purchase Date
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Sold
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Country
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={11} className="px-6 py-4 text-center text-sm text-gray-500">
                     Loading...
                   </td>
                 </tr>
               ) : sortedPositions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={11} className="px-6 py-4 text-center text-sm text-gray-500">
                     No positions found
                   </td>
                 </tr>
@@ -196,6 +288,25 @@ export default function PortfolioPage() {
                         )}
                         {formatPercent(position.percentChange)}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                      {formatDividend(position.dividendYield, position.marketValue)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                      <div className="flex items-center justify-center">
+                        <span className="mr-2">{formatPurchaseDate(position.purchaseDate)}</span>
+                        {isNewBuy(position.purchaseDate) && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            New Buy
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                      {position.salePercentage ? `${position.salePercentage}%` : '0%'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                      {position.country || '-'}
                     </td>
                   </tr>
                 ))

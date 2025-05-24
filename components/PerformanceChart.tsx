@@ -10,6 +10,11 @@ type PerformanceChartProps = {
     value: number;
     return: number;
   }[];
+  spData?: {
+    date: string;
+    value: number;
+    return: number;
+  }[];
 }
 
 // Format currency values for display
@@ -164,7 +169,7 @@ const formatDateForChart = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-export default function PerformanceChart({ data }: PerformanceChartProps) {
+export default function PerformanceChart({ data, spData }: PerformanceChartProps) {
   const chartRef = useRef<HTMLCanvasElement>(null)
   const chartInstance = useRef<Chart | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -172,6 +177,10 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
   // Debug array for console
   const dataPoints = data.map(point => `${formatDate(point.date)}: ${point.return}`);
   console.log("Data points to be charted:", dataPoints);
+  if (spData) {
+    const spDataPoints = spData.map(point => `${formatDate(point.date)}: ${point.return}`);
+    console.log("S&P 500 data points:", spDataPoints);
+  }
 
   useEffect(() => {
     // Clean up previous chart instance if exists
@@ -190,125 +199,205 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
       return;
     }
 
+    setError(null);
+    
     try {
-      // Sort data by date
-      const sortedData = [...data].sort((a, b) => {
-        try {
-          const dateA = parseDate(a.date);
-          const dateB = parseDate(b.date);
-          
-          // If either date is invalid, fall back to string comparison
-          if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-            return a.date.localeCompare(b.date);
-          }
-          
-          return dateA.getTime() - dateB.getTime();
-        } catch (err) {
-          console.error('Error sorting dates:', err);
-          return a.date.localeCompare(b.date);
-        }
-      });
+      // Process and sort data by date
+      const processedData = [...data]
+        .map(item => ({
+          date: parseDate(item.date),
+          value: item.value,
+          return: item.return
+        }))
+        .filter(item => !isNaN(item.date.getTime()))
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-      // Create datasets
+      const processedSpData = spData ? 
+        [...spData]
+          .map(item => ({
+            date: parseDate(item.date),
+            value: item.value,
+            return: item.return
+          }))
+          .filter(item => !isNaN(item.date.getTime()))
+          .sort((a, b) => a.date.getTime() - b.date.getTime()) : [];
+
+      if (processedData.length === 0) {
+        setError("No valid data points to display");
+        return;
+      }
+
+      const labels = processedData.map(item => formatDateForChart(item.date));
+      const portfolioReturns = processedData.map(item => item.return * 100); // Convert to percentage
+      const spReturns = processedSpData.map(item => item.return * 100);
+
       const ctx = chartRef.current.getContext('2d');
-      
       if (!ctx) {
         setError("Could not get canvas context");
         return;
       }
 
-      // Determine if trend is positive for coloring
-      const startValue = sortedData[0].return;
-      const endValue = sortedData[sortedData.length - 1].return;
-      const isPositive = endValue >= startValue;
-      
-      const chartColor = isPositive ? '#10b981' : '#ef4444'; // green or red
-      
-      // Find min and max values for better scaling
-      const returnValues = sortedData.map(item => item.return);
-      const minReturn = Math.min(...returnValues);
-      const maxReturn = Math.max(...returnValues);
-      
-      // Create buffer for better visualization (10% padding)
-      const range = Math.max(Math.abs(minReturn), Math.abs(maxReturn));
-      const buffer = range * 0.2;
-      
-      // Create simple chart
+      // Create gradients for the lines
+      const portfolioGradient = ctx.createLinearGradient(0, 0, 0, 400);
+      portfolioGradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)'); // Blue with transparency
+      portfolioGradient.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
+
+      const spGradient = ctx.createLinearGradient(0, 0, 0, 400);
+      spGradient.addColorStop(0, 'rgba(156, 163, 175, 0.2)'); // Gray with transparency
+      spGradient.addColorStop(1, 'rgba(156, 163, 175, 0.05)');
+
       chartInstance.current = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: sortedData.map(item => {
-            const date = parseDate(item.date);
-            if (!isNaN(date.getTime())) {
-              return formatDateForChart(date);
-            }
-            return item.date; // Fallback to original string
-          }),
-          datasets: [{
-            label: 'Kar/Zarar',
-            data: sortedData.map(item => item.return),
-            borderColor: chartColor,
-            backgroundColor: isPositive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            borderWidth: 2,
-            tension: 0.1,
-            fill: {
-              target: 'origin',
-              above: 'rgba(16, 185, 129, 0.1)', // Green area for values above zero
-              below: 'rgba(239, 68, 68, 0.1)'   // Red area for values below zero
-            }
-          }]
+          labels,
+          datasets: [
+            {
+              label: 'Portfolio Performance',
+              data: portfolioReturns,
+              borderColor: '#3B82F6', // Modern blue
+              backgroundColor: portfolioGradient,
+              borderWidth: 3,
+              fill: true,
+              tension: 0.4, // Smoother curves
+              pointBackgroundColor: '#3B82F6',
+              pointBorderColor: '#FFFFFF',
+              pointBorderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointHoverBackgroundColor: '#1D4ED8',
+              pointHoverBorderColor: '#FFFFFF',
+              pointHoverBorderWidth: 3,
+            },
+            ...(spReturns.length > 0 ? [{
+              label: 'S&P 500',
+              data: spReturns,
+              borderColor: '#6B7280', // Modern gray
+              backgroundColor: spGradient,
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4,
+              pointBackgroundColor: '#6B7280',
+              pointBorderColor: '#FFFFFF',
+              pointBorderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointHoverBackgroundColor: '#4B5563',
+              pointHoverBorderColor: '#FFFFFF',
+              pointHoverBorderWidth: 2,
+            }] : []),
+          ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: false,
-              ticks: {
-                callback: function(value) {
-                  return formatPercentage(Number(value));
-                },
-                // Force the chart to show more ticks for better readability
-                count: 10
-              },
-              // Ensure zero is included and visible
-              suggestedMin: Math.min(minReturn - buffer, 0),
-              suggestedMax: Math.max(maxReturn + buffer, 0),
-              grid: {
-                color: (context) => {
-                  // Highlight the zero line
-                  if (context.tick.value === 0) {
-                    return 'rgba(0, 0, 0, 0.5)';
-                  }
-                  return 'rgba(0, 0, 0, 0.1)';
-                },
-                lineWidth: (context) => {
-                  // Make zero line thicker
-                  if (context.tick.value === 0) {
-                    return 2;
-                  }
-                  return 1;
-                }
-              }
-            }
+          interaction: {
+            intersect: false,
+            mode: 'index',
+          },
+          animation: {
+            duration: 1000,
+            easing: 'easeOutQuart',
           },
           plugins: {
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return formatPercentage(context.parsed.y);
-                }
-              }
-            },
-            title: {
+            legend: {
               display: true,
-              text: 'Portföy Kar/Zarar Grafiği'
-            }
-          }
-        }
+              position: 'top',
+              align: 'end',
+              labels: {
+                boxWidth: 12,
+                boxHeight: 12,
+                borderRadius: 6,
+                color: '#374151',
+                font: {
+                  size: 13,
+                  weight: 500,
+                },
+                padding: 20,
+                usePointStyle: true,
+                pointStyle: 'circle',
+              },
+            },
+            tooltip: {
+              backgroundColor: 'rgba(17, 24, 39, 0.95)',
+              titleColor: '#F9FAFB',
+              bodyColor: '#F9FAFB',
+              borderColor: '#E5E7EB',
+              borderWidth: 1,
+              cornerRadius: 8,
+              displayColors: true,
+              titleFont: {
+                size: 14,
+                weight: 600,
+              },
+              bodyFont: {
+                size: 13,
+              },
+              padding: 12,
+              callbacks: {
+                title: function(context: any) {
+                  if (context[0]?.dataIndex !== undefined) {
+                    const dateStr = labels[context[0].dataIndex];
+                    return formatDate(dateStr);
+                  }
+                  return '';
+                },
+                label: function(context: any) {
+                  const value = context.parsed.y;
+                  const datasetLabel = context.dataset.label || '';
+                  return `${datasetLabel}: ${formatPercentage(value / 100)}`;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              display: true,
+              grid: {
+                display: false,
+              },
+              border: {
+                display: false,
+              },
+              ticks: {
+                color: '#6B7280',
+                font: {
+                  size: 12,
+                  weight: 400,
+                },
+                maxTicksLimit: 8,
+                callback: function(value: any, index: number) {
+                  const dateStr = labels[index];
+                  if (dateStr) {
+                    return formatDate(dateStr);
+                  }
+                  return '';
+                },
+              },
+            },
+            y: {
+              display: true,
+              position: 'left',
+              grid: {
+                color: 'rgba(156, 163, 175, 0.2)',
+              },
+              border: {
+                display: false,
+              },
+              ticks: {
+                color: '#6B7280',
+                font: {
+                  size: 12,
+                  weight: 400,
+                },
+                callback: function(value: any) {
+                  return formatPercentage(value / 100);
+                },
+                padding: 8,
+              },
+            },
+          },
+        },
       });
-      
-      setError(null);
     } catch (err) {
       console.error("Error creating chart:", err);
       setError(`Error creating chart: ${err instanceof Error ? err.message : String(err)}`);
@@ -321,7 +410,7 @@ export default function PerformanceChart({ data }: PerformanceChartProps) {
         chartInstance.current = null;
       }
     };
-  }, [data]);
+  }, [data, spData]);
 
   return (
     <div className="w-full h-full">

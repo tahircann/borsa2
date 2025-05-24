@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getPerformance } from '@/services/ibapi'
+import { getPerformance, getSP500Data } from '@/services/ibapi'
 import PerformanceChart from '@/components/PerformanceChart'
 
 export default function PerformancePage() {
@@ -16,29 +16,41 @@ export default function PerformancePage() {
     system_date?: string;
     original_data?: any;
   } | null>(null)
+  const [sp500Data, setSp500Data] = useState<{
+    data: { date: string; value: number; return: number }[];
+    startValue: number;
+    endValue: number;
+    percentChange: number;
+  } | null>(null)
 
   useEffect(() => {
-    const fetchPerformance = async () => {
+    const fetchData = async () => {
       setLoading(true)
       setError(null)
       try {
-        const result = await getPerformance(period)
-        console.log('Performance data received:', result)
+        // Fetch both portfolio performance and S&P 500 data
+        const [portfolioResult, sp500Result] = await Promise.all([
+          getPerformance(period),
+          getSP500Data(period)
+        ])
         
-        // Make sure we have valid data for the chart
-        if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
-          setError('Received empty or invalid data from server');
+        console.log('Performance data received:', portfolioResult)
+        console.log('S&P 500 data received:', sp500Result)
+        
+        // Process portfolio data
+        if (!portfolioResult.data || !Array.isArray(portfolioResult.data) || portfolioResult.data.length === 0) {
+          setError('Received empty or invalid portfolio data from server');
         } else {
           // Add return values if they don't exist
           const enhancedData = {
-            ...result,
-            data: result.data.map(item => {
+            ...portfolioResult,
+            data: portfolioResult.data.map(item => {
               // If return already exists, keep it
               if ('return' in item) {
                 return item as { date: string; value: number; return: number };
               }
               // Calculate a return based on the value (for demonstration purposes)
-              const normalizedValue = item.value / result.startValue;
+              const normalizedValue = item.value / portfolioResult.startValue;
               const sampleReturn = (normalizedValue - 1) * 0.05;
               return {
                 date: item.date,
@@ -49,24 +61,33 @@ export default function PerformancePage() {
           };
           
           // Log each data point for debugging
-          console.log(`Received ${enhancedData.data.length} data points:`, 
+          console.log(`Received ${enhancedData.data.length} portfolio data points:`, 
             enhancedData.data.map(point => `${point.date}: ${point.value}, return: ${point.return}`).join(', ')
           );
           
           setPerformanceData(enhancedData);
         }
+
+        // Process S&P 500 data
+        if (sp500Result.data && Array.isArray(sp500Result.data) && sp500Result.data.length > 0) {
+          setSp500Data(sp500Result);
+          console.log(`Received ${sp500Result.data.length} S&P 500 data points`);
+        } else {
+          console.warn('No S&P 500 data received');
+          setSp500Data(null);
+        }
         
         // Increment chart key to force re-render
         setChartKey(prev => prev + 1);
       } catch (error) {
-        console.error('Failed to fetch performance data:', error)
+        console.error('Failed to fetch data:', error)
         setError('Failed to load performance data. Please try again later.')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchPerformance()
+    fetchData()
   }, [period])
 
   // Check if data looks like future dates
@@ -89,7 +110,7 @@ export default function PerformancePage() {
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Portfolio Performance</h1>
+        <h1 className="text-2xl font-bold">Portfolio Performance vs S&P 500</h1>
         <div className="flex items-center space-x-2">
           <select
             value={period}
@@ -121,9 +142,9 @@ export default function PerformancePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-sm text-gray-500 mb-1">Starting Value</div>
+          <div className="text-sm text-gray-500 mb-1">Portfolio Start Value</div>
           <div className="text-2xl font-semibold">
             {loading ? (
               '-'
@@ -138,7 +159,7 @@ export default function PerformancePage() {
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-sm text-gray-500 mb-1">Current Value</div>
+          <div className="text-sm text-gray-500 mb-1">Portfolio Current Value</div>
           <div className="text-2xl font-semibold">
             {loading ? (
               '-'
@@ -153,7 +174,7 @@ export default function PerformancePage() {
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-sm text-gray-500 mb-1">Performance</div>
+          <div className="text-sm text-gray-500 mb-1">Portfolio Performance</div>
           {loading ? (
             <div className="text-2xl font-semibold">-</div>
           ) : (
@@ -177,6 +198,31 @@ export default function PerformancePage() {
             </div>
           )}
         </div>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="text-sm text-gray-500 mb-1">S&P 500 Performance</div>
+          {loading ? (
+            <div className="text-2xl font-semibold">-</div>
+          ) : (
+            <div
+              className={`text-2xl font-semibold flex items-center ${
+                sp500Data && sp500Data.percentChange >= 0
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }`}
+            >
+              {sp500Data && sp500Data.percentChange >= 0 ? (
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+              {Math.abs(sp500Data?.percentChange || 0).toFixed(2)}%
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -192,7 +238,11 @@ export default function PerformancePage() {
               </div>
             </div>
           ) : hasValidData ? (
-            <PerformanceChart key={chartKey} data={performanceData.data} />
+            <PerformanceChart 
+              key={chartKey} 
+              data={performanceData.data} 
+              spData={sp500Data?.data || undefined}
+            />
           ) : (
             <div className="flex justify-center items-center h-full">
               <p className="text-gray-500">No performance data available for this period</p>

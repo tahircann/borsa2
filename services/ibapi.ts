@@ -1,5 +1,6 @@
 import axios from 'axios';
 import https from 'https';
+import { alphaVantageAPI } from './alphaVantageApi';
 
 // Global tipini genişlet
 declare global {
@@ -101,6 +102,10 @@ export type Position = {
   marketValue: number;
   unrealizedPnL: number;
   percentChange: number;
+  dividendYield?: number;
+  purchaseDate?: string;
+  salePercentage?: number;
+  country?: string;
 };
 
 export type Trade = {
@@ -188,8 +193,8 @@ const checkApiConnection = async (): Promise<boolean> => {
 
 // Mock portfolio data
 const mockPortfolio: Portfolio = {
-  totalValue: 125842.65,
-  cash: 12500.82,
+  totalValue: 145642.85,
+  cash: 15200.42,
   positions: [
     {
       symbol: 'AAPL',
@@ -199,6 +204,10 @@ const mockPortfolio: Portfolio = {
       marketValue: 9216.00,
       unrealizedPnL: 942.00,
       percentChange: 11.38,
+      dividendYield: 0.0044, // 0.44%
+      purchaseDate: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(), // 18 hours ago - NEW BUY
+      salePercentage: 0,
+      country: 'United States',
     },
     {
       symbol: 'MSFT',
@@ -208,6 +217,49 @@ const mockPortfolio: Portfolio = {
       marketValue: 8455.25,
       unrealizedPnL: 824.75,
       percentChange: 10.82,
+      dividendYield: 0.0072, // 0.72%
+      purchaseDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(), // 45 days ago
+      salePercentage: 20,
+      country: 'United States',
+    },
+    {
+      symbol: 'NVDA',
+      name: 'NVIDIA Corp.',
+      quantity: 15,
+      averageCost: 720.50,
+      marketValue: 12450.75,
+      unrealizedPnL: 1642.25,
+      percentChange: 15.18,
+      dividendYield: 0.0002, // 0.02%
+      purchaseDate: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago - NEW BUY
+      salePercentage: 0,
+      country: 'United States',
+    },
+    {
+      symbol: 'JPM',
+      name: 'JPMorgan Chase & Co.',
+      quantity: 40,
+      averageCost: 145.80,
+      marketValue: 7296.00,
+      unrealizedPnL: 464.00,
+      percentChange: 6.81,
+      dividendYield: 0.0252, // 2.52%
+      purchaseDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days ago
+      salePercentage: 0,
+      country: 'United States',
+    },
+    {
+      symbol: 'JNJ',
+      name: 'Johnson & Johnson',
+      quantity: 30,
+      averageCost: 158.42,
+      marketValue: 4935.60,
+      unrealizedPnL: 183.00,
+      percentChange: 3.85,
+      dividendYield: 0.0287, // 2.87%
+      purchaseDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
+      salePercentage: 10,
+      country: 'United States',
     },
     {
       symbol: 'GOOGL',
@@ -217,15 +269,10 @@ const mockPortfolio: Portfolio = {
       marketValue: 2843.00,
       unrealizedPnL: 199.40,
       percentChange: 7.54,
-    },
-    {
-      symbol: 'AMZN',
-      name: 'Amazon.com Inc.',
-      quantity: 15,
-      averageCost: 130.25,
-      marketValue: 2185.20,
-      unrealizedPnL: 231.45,
-      percentChange: 11.85,
+      dividendYield: 0.0000, // No dividend
+      purchaseDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days ago
+      salePercentage: 0,
+      country: 'United States',
     },
     {
       symbol: 'TSLA',
@@ -235,7 +282,24 @@ const mockPortfolio: Portfolio = {
       marketValue: 5304.90,
       unrealizedPnL: -564.10,
       percentChange: -9.61,
+      dividendYield: 0.0000, // No dividend
+      purchaseDate: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago - NEW BUY
+      salePercentage: 0,
+      country: 'United States',
     },
+    {
+      symbol: 'KO',
+      name: 'The Coca-Cola Company',
+      quantity: 100,
+      averageCost: 59.25,
+      marketValue: 6180.00,
+      unrealizedPnL: 255.00,
+      percentChange: 4.30,
+      dividendYield: 0.0301, // 3.01%
+      purchaseDate: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(), // 120 days ago
+      salePercentage: 5,
+      country: 'United States',
+    }
   ],
 };
 
@@ -264,13 +328,54 @@ export const getPortfolio = async (): Promise<Portfolio> => {
         },
         validateStatus: () => true,
       });
+
+      // Get trades data for purchase dates and sale information
+      const tradesResponse = await apiClient.get('', {
+        params: {
+          target: 'ibgateway',
+          path: 'iserver/account/orders'
+        },
+        validateStatus: () => true,
+      });
       
       if (summaryResponse.status === 200 && positionsResponse.status === 200) {
         const summary = summaryResponse.data;
         const positions = positionsResponse.data || [];
+        const trades = tradesResponse.status === 200 ? tradesResponse.data?.orders || [] : [];
         
         console.log('Alınan pozisyon verisi:', JSON.stringify(positions, null, 2));
+        console.log('Alınan işlem verisi:', trades.length, 'trades');
         
+        // Extract symbols for Alpha Vantage API calls
+        const symbols = positions.map((pos: any) => pos.contractDesc || pos.symbol).filter(Boolean);
+        
+        // Get dividend and country data from Alpha Vantage
+        let stockMetadata = new Map();
+        try {
+          console.log('Alpha Vantage API\'den temettü ve ülke bilgileri alınıyor...');
+          stockMetadata = await alphaVantageAPI.getStockMetadata(symbols);
+          console.log('Alpha Vantage metaveri alındı:', stockMetadata.size, 'hisse için');
+        } catch (error) {
+          console.error('Alpha Vantage API hatası:', error);
+        }
+
+        // Process trades to get purchase dates and sale information
+        const tradesBySymbol = new Map();
+        trades.forEach((trade: any) => {
+          const symbol = trade.ticker || trade.description1 || trade.contractDesc;
+          if (symbol) {
+            if (!tradesBySymbol.has(symbol)) {
+              tradesBySymbol.set(symbol, []);
+            }
+            tradesBySymbol.get(symbol).push({
+              date: trade.lastExecutionTime || trade.submittedAt || new Date().toISOString(),
+              action: trade.side || 'BUY',
+              quantity: trade.totalSize || trade.filledQuantity || 0,
+              status: trade.status || 'Unknown'
+            });
+          }
+        });
+
         // Nakit değerini bul (IB API'de tutarsız biçimler var)
         let cashValue = 0;
         if (summary.totalcashvalue && summary.totalcashvalue.amount) {
@@ -284,15 +389,38 @@ export const getPortfolio = async (): Promise<Portfolio> => {
           totalValue: 0, // Pozisyonlar + nakit üzerinden hesaplanacak
           cash: cashValue,
           positions: Array.isArray(positions) ? positions.map((pos: any) => {
+            const symbol = pos.contractDesc || pos.symbol || 'Unknown';
+            
+            // Get metadata from Alpha Vantage
+            const metadata = stockMetadata.get(symbol) || { dividendYield: null, country: null };
+            
+            // Get trade information for this symbol
+            const symbolTrades = tradesBySymbol.get(symbol) || [];
+            
+            // Find most recent purchase date
+            const buyTrades = symbolTrades.filter((t: any) => t.action === 'BUY' || t.action === 'BOT');
+            const mostRecentPurchase = buyTrades.length > 0 ? 
+              buyTrades.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] : null;
+            
+            // Calculate sale percentage
+            const sellTrades = symbolTrades.filter((t: any) => t.action === 'SELL' || t.action === 'SLD');
+            const totalSold = sellTrades.reduce((sum: number, trade: any) => sum + (trade.quantity || 0), 0);
+            const totalBought = buyTrades.reduce((sum: number, trade: any) => sum + (trade.quantity || 0), 0);
+            const salePercentage = totalBought > 0 ? Math.round((totalSold / totalBought) * 100) : 0;
+            
             // Pozisyon detaylarını çıkar
-            const position = {
-              symbol: pos.contractDesc || 'Bilinmiyor',
-              name: pos.longName || pos.contractDesc || 'Bilinmiyor',
+            const position: Position = {
+              symbol,
+              name: pos.longName || pos.contractDesc || symbol,
               quantity: Number(pos.position) || 0,
               averageCost: Number(pos.avgPrice) || 0,
               marketValue: Number(pos.mktValue) || 0,
               unrealizedPnL: Number(pos.unrealizedPnL) || Number(pos.pnl) || Number(pos.profitLoss) || 0,
               percentChange: 0, // Aşağıda hesaplanacak
+              dividendYield: metadata.dividendYield,
+              purchaseDate: mostRecentPurchase?.date || undefined,
+              salePercentage: salePercentage,
+              country: metadata.country
             };
             
             // Eğer unrealizedPnL 0 ise, manuel hesaplama yap
@@ -643,13 +771,14 @@ export const getDividends = async (
 
 // Mock performance data generator
 const generateMockPerformanceData = (days: number): {
-  data: { date: string; value: number }[];
+  data: { date: string; value: number; return: number }[];
   startValue: number;
   endValue: number;
   percentChange: number;
 } => {
   let value = 100000;
   const data = [];
+  const startValue = value;
   
   for (let i = 0; i < days; i++) {
     const date = new Date();
@@ -659,9 +788,13 @@ const generateMockPerformanceData = (days: number): {
     const change = (Math.random() * 4) - 1.5;
     value = value * (1 + change / 100);
     
+    // Calculate return as percentage change from start
+    const returnValue = (value - startValue) / startValue;
+    
     data.push({
       date: date.toISOString().split('T')[0],
       value: Number(value.toFixed(2)),
+      return: Number(returnValue.toFixed(4)),
     });
   }
   
@@ -674,7 +807,7 @@ const generateMockPerformanceData = (days: number): {
 };
 
 export const getPerformance = async (period: string = '1m'): Promise<{
-  data: { date: string; value: number }[];
+  data: { date: string; value: number; return: number }[];
   startValue: number;
   endValue: number;
   percentChange: number;
@@ -986,6 +1119,76 @@ const generateMockAllocationData = (): AllocationData => {
   };
 };
 
+// Mock S&P 500 data generator
+const generateMockSP500Data = (days: number): {
+  data: { date: string; value: number; return: number }[];
+  startValue: number;
+  endValue: number;
+  percentChange: number;
+} => {
+  let value = 4500; // Typical S&P 500 index value
+  const data = [];
+  let baseReturn = 0;
+  
+  for (let i = 0; i < days; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - (days - i));
+    
+    // Random daily change for S&P 500 (generally less volatile than individual portfolios)
+    const change = (Math.random() * 2.5) - 1.0; // ±1% typical daily range
+    const returnChange = change / 100;
+    value = value * (1 + returnChange);
+    baseReturn += returnChange;
+    
+    data.push({
+      date: date.toISOString().split('T')[0],
+      value: Number(value.toFixed(2)),
+      return: Number(baseReturn.toFixed(4))
+    });
+  }
+  
+  return {
+    data,
+    startValue: Number(data[0].value.toFixed(2)),
+    endValue: Number(data[data.length - 1].value.toFixed(2)),
+    percentChange: Number((((data[data.length - 1].value - data[0].value) / data[0].value) * 100).toFixed(2)),
+  };
+};
+
+// Get S&P 500 data for comparison
+export const getSP500Data = async (period: string = '1m'): Promise<{
+  data: { date: string; value: number; return: number }[];
+  startValue: number;
+  endValue: number;
+  percentChange: number;
+}> => {
+  try {
+    // For now, we'll use mock data for S&P 500
+    // In a production environment, this would fetch real S&P 500 data from an API
+    
+    let days = 30;
+    switch (period) {
+      case '1w': days = 7; break;
+      case '1m': days = 30; break;
+      case '3m': days = 90; break;
+      case '6m': days = 180; break;
+      case '1y': days = 365; break;
+      case 'all': days = 730; break;
+    }
+    
+    return generateMockSP500Data(days);
+  } catch (error) {
+    console.error('S&P 500 data retrieval error:', error);
+    // Return minimal data in case of error
+    return {
+      data: [],
+      startValue: 0,
+      endValue: 0,
+      percentChange: 0
+    };
+  }
+};
+
 export default {
   getPortfolio,
   getTrades,
@@ -993,4 +1196,5 @@ export default {
   getPerformance,
   getPositions,
   getAllocation,
+  getSP500Data,
 }; 
