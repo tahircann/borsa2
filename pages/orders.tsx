@@ -1,60 +1,63 @@
 import { useState, useEffect } from 'react'
-import { FiDownload, FiSearch, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi'
-import { getTrades, type Trade } from '@/services/ibapi'
+import { FiDownload, FiSearch, FiChevronLeft, FiChevronRight, FiX, FiRefreshCw } from 'react-icons/fi'
+import { getAllOrders, type Trade } from '@/services/ibapi'
 
-export default function Trades() {
-  const [trades, setTrades] = useState<Trade[]>([])
+export default function Orders() {
+  const [orders, setOrders] = useState<Trade[]>([])
   const [loading, setLoading] = useState(true)
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [limit] = useState(10)
+  const [limit] = useState(15)
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [filterStatus, setFilterStatus] = useState<string>('all')
 
   useEffect(() => {
-    const fetchTrades = async () => {
+    const fetchOrders = async () => {
       setLoading(true)
       setError(null)
       try {
-        const result = await getTrades(page, limit)
-        console.log("Alınan işlemler:", result)
+        const result = await getAllOrders(page, limit)
+        console.log("Alınan order'lar:", result)
         
-        // Debug received trades data
         if (result.trades && result.trades.length > 0) {
-          console.log("İşlem verisi örneği:", JSON.stringify(result.trades[0], null, 2))
-          console.log("Company bilgileri:", result.trades.map(t => ({ 
-            id: t.id, 
-            ticker: t.ticker, 
-            company: t.company,
-            side: t.side,
-            avgPrice: t.avgPrice
-          })))
+          console.log("Order verisi örneği:", JSON.stringify(result.trades[0], null, 2))
         }
         
-        setTrades(result.trades)
+        setOrders(result.trades)
         setTotal(result.total)
       } catch (error) {
-        console.error('Failed to fetch trades:', error)
-        setError('İşlem verisi alınırken bir hata oluştu.')
+        console.error('Failed to fetch orders:', error)
+        setError('Order verisi alınırken bir hata oluştu.')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchTrades()
+    fetchOrders()
   }, [page, limit])
 
-  const filteredTrades = trades.filter(
-    (trade) =>
-      (trade.ticker?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (trade.company?.toLowerCase() || '').includes(search.toLowerCase())
-  )
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch = 
+      (order.ticker?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (order.company?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (order.orderId?.toLowerCase() || '').includes(search.toLowerCase())
+    
+    const matchesStatus = filterStatus === 'all' || order.status?.toLowerCase() === filterStatus.toLowerCase()
+    
+    return matchesSearch && matchesStatus
+  })
 
   const totalPages = Math.ceil(total / limit)
 
   const handleCancelOrder = (orderId: string) => {
     console.log(`Cancel order: ${orderId}`)
     // API call to cancel the order would go here
+  }
+
+  const handleRefresh = () => {
+    setPage(1)
+    window.location.reload() // Simple refresh for now
   }
 
   // Format execution time
@@ -77,21 +80,60 @@ export default function Trades() {
     return timeStr
   }
 
+  // Status için renkler
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'filled':
+        return 'bg-blue-100 text-blue-800'
+      case 'active':
+      case 'submitted':
+      case 'presubmitted':
+        return 'bg-green-100 text-green-800'
+      case 'cancelled':
+        return 'bg-gray-100 text-gray-800'
+      case 'rejected':
+        return 'bg-red-100 text-red-800'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
   return (
     <>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Orders (Filled)</h1>
+        <h1 className="text-2xl font-bold">All Orders</h1>
         <div className="flex items-center space-x-2">
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by ticker or company"
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-64"
+              placeholder="Search by ticker, company, or order ID"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-80"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-2"
+          >
+            <option value="all">All Statuses</option>
+            <option value="filled">Filled</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button
+            onClick={handleRefresh}
+            className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md flex items-center"
+          >
+            <FiRefreshCw className="mr-2" />
+            Refresh
+          </button>
           <button
             className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-md flex items-center"
           >
@@ -128,22 +170,22 @@ export default function Trades() {
                   Order Type
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Qty (Filled/Total)
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Avg Price
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Filled Qty
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Size
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Execution Time
+                  Time in Force
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Execution
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cancel
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -151,83 +193,87 @@ export default function Trades() {
               {loading ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-4 text-center text-sm text-gray-500">
-                    Loading...
+                    Loading orders...
                   </td>
                 </tr>
-              ) : filteredTrades.length === 0 ? (
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-4 text-center text-sm text-gray-500">
-                    API'ye bağlanılamadı veya işlem verisi bulunamadı. Lütfen Interactive Brokers hesabınıza bağlı olduğunuzdan emin olun.
+                    {orders.length === 0 
+                      ? "No orders found. Make sure you're connected to Interactive Brokers."
+                      : "No orders match the current filter criteria."
+                    }
                   </td>
                 </tr>
               ) : (
-                filteredTrades.map((trade) => (
-                  <tr key={trade.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trade.orderId}
+                filteredOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                      {order.orderId}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{trade.ticker || 'Unknown'}</div>
+                      <div className="text-sm font-medium text-gray-900">{order.ticker || 'Unknown'}</div>
+                      <div className="text-xs text-gray-500">{order.secType || 'STK'}</div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trade.company || trade.companyName || 'Unknown'}
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">
+                      {order.company || order.companyName || order.description1 || 'Unknown'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          trade.side === 'BUY'
+                          order.side === 'BUY'
                             ? 'bg-green-100 text-green-800'
-                            : trade.side === 'SELL'
+                            : order.side === 'SELL'
                             ? 'bg-red-100 text-red-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}
                       >
-                        {trade.side || 'N/A'}
+                        {order.side || 'N/A'}
                       </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trade.orderType || trade.origOrderType || 'N/A'}
+                      {order.orderType || order.origOrderType || 'N/A'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trade.avgPrice ? `$${trade.avgPrice}` : 'N/A'}
+                      <div className="flex flex-col">
+                        <span>{order.filledQuantity || 0} / {order.totalSize || 0}</span>
+                        {order.remainingQuantity !== undefined && (
+                          <span className="text-xs text-gray-400">
+                            Remaining: {order.remainingQuantity}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trade.filledQuantity || '0'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {trade.totalSize || '0'}
+                      {order.avgPrice ? `$${order.avgPrice}` : 'N/A'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          trade.status === 'Filled'
-                            ? 'bg-blue-100 text-blue-800'
-                            : trade.status === 'Active'
-                            ? 'bg-green-100 text-green-800'
-                            : trade.status === 'Cancelled'
-                            ? 'bg-gray-100 text-gray-800'
-                            : trade.status === 'Rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status || '')}`}
                       >
-                        {trade.status}
+                        {order.status || order.order_ccp_status || 'Unknown'}
                       </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatExecutionTime(trade.lastExecutionTime)}
+                      {order.timeInForce || 'N/A'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatExecutionTime(order.lastExecutionTime)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                      {trade.canCancel ? (
-                        <button 
-                          onClick={() => handleCancelOrder(trade.orderId)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <FiX className="h-5 w-5" />
-                        </button>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
+                      <div className="flex justify-center space-x-2">
+                        {order.canCancel ? (
+                          <button 
+                            onClick={() => handleCancelOrder(order.orderId)}
+                            className="text-red-600 hover:text-red-900 p-1"
+                            title="Cancel Order"
+                          >
+                            <FiX className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 p-1">-</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -241,11 +287,14 @@ export default function Trades() {
           <div className="flex-1 flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{total > 0 ? (page - 1) * limit + 1 : 0}</span> to{' '}
+                Showing <span className="font-medium">{filteredOrders.length > 0 ? (page - 1) * limit + 1 : 0}</span> to{' '}
                 <span className="font-medium">
-                  {Math.min(page * limit, total)}
+                  {Math.min(page * limit, filteredOrders.length)}
                 </span>{' '}
-                of <span className="font-medium">{total}</span> results
+                of <span className="font-medium">{filteredOrders.length}</span> filtered results
+                {total > 0 && (
+                  <span className="text-gray-500"> ({total} total orders)</span>
+                )}
               </p>
             </div>
             <div className="flex space-x-2">

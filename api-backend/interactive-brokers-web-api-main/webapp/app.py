@@ -1,5 +1,5 @@
 import requests, time, os, random, json, logging
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, jsonify
 from datetime import datetime, timedelta
 
 # Configure logging
@@ -19,6 +19,14 @@ logger.info(f"BASE_API_URL: {BASE_API_URL}")
 os.environ['PYTHONHTTPSVERIFY'] = '0'
 
 app = Flask(__name__)
+
+@app.after_request
+def after_request(response):
+    """Add CORS headers to all responses"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 # Güvenli API istekleri için yardımcı fonksiyon
 def safe_api_request(url, method='get', **kwargs):
@@ -958,6 +966,76 @@ def portfolio_allocation():
     except Exception as e:
         logger.exception("Error in portfolio allocation route")
         return render_template("error.html", error=f"Error retrieving portfolio allocation: {str(e)}")
+
+@app.route("/api/allocation")
+def api_allocation():
+    """JSON API endpoint for allocation data"""
+    try:
+        # Get accounts
+        accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
+        
+        if error:
+            return jsonify({"error": f"Failed to get accounts: {error}"}), 500
+        
+        if not accounts:
+            return jsonify({"error": "No accounts found"}), 404
+        
+        # Try the second account if available, otherwise use the first one
+        account = accounts[1] if len(accounts) > 1 else accounts[0]
+        account_id = account["id"]
+        
+        # Fetch allocation data from IBKR API
+        allocation_data, error = safe_api_request(f"{BASE_API_URL}/portfolio/{account_id}/allocation")
+        
+        if error:
+            return jsonify({"error": f"Failed to get allocation data: {error}"}), 500
+            
+        logger.info(f"API Allocation data response: {json.dumps(allocation_data, indent=2)}")
+        
+        # Convert allocation data to frontend format
+        result = {
+            "assetClass": [],
+            "sector": [],
+            "industry": []
+        }
+        
+        # Define color palettes
+        asset_class_colors = ['#8fffa9', '#e9e9e9', '#75d7ff', '#c9c9c9', '#ff85c0', '#aaaaaa']
+        sector_colors = ['#292b3c', '#f9d673', '#ff85c0', '#aaaaaa', '#5bc0de', '#99ddff', '#d9534f', '#f0ad4e']
+        industry_colors = ['#bc8f50', '#f0ad4e', '#ceeaff', '#f3f3ab', '#ffea95', '#ff7575', '#ffc8b3', '#9e9e9e']
+        
+        # Process asset class data
+        if 'assetClass' in allocation_data and 'long' in allocation_data['assetClass']:
+            for i, (asset_class, value) in enumerate(allocation_data['assetClass']['long'].items()):
+                result["assetClass"].append({
+                    "name": asset_class,
+                    "value": float(value),
+                    "color": asset_class_colors[i % len(asset_class_colors)]
+                })
+        
+        # Process sector data
+        if 'sector' in allocation_data and 'long' in allocation_data['sector']:
+            for i, (sector, value) in enumerate(allocation_data['sector']['long'].items()):
+                result["sector"].append({
+                    "name": sector,
+                    "value": float(value),
+                    "color": sector_colors[i % len(sector_colors)]
+                })
+        
+        # Process industry data (group data from IBKR)
+        if 'group' in allocation_data and 'long' in allocation_data['group']:
+            for i, (industry, value) in enumerate(allocation_data['group']['long'].items()):
+                result["industry"].append({
+                    "name": industry,
+                    "value": float(value),
+                    "color": industry_colors[i % len(industry_colors)]
+                })
+        
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.exception("Error in API allocation route")
+        return jsonify({"error": f"Error retrieving portfolio allocation: {str(e)}"}), 500
 
 @app.route("/real-market")
 def real_market():

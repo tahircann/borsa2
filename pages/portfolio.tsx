@@ -56,9 +56,23 @@ export default function PortfolioPage() {
     const fetchPortfolio = async () => {
       setLoading(true)
       setError(null)
+      
+      // Set a timeout for the API call
+      const timeoutId = setTimeout(() => {
+        setError('Portfolio data is taking longer than expected. Please check your API connections.')
+      }, 10000);
+      
       try {
-        const result = await getPortfolio()
+        const result = await Promise.race([
+          getPortfolio(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Portfolio fetch timeout after 20 seconds')), 20000)
+          )
+        ]) as Portfolio;
+        
+        clearTimeout(timeoutId);
         setPortfolio(result)
+        setError(null)
         
         // Determine data source based on whether we have real API data
         const hasRealDividendData = result.positions.some(pos => 
@@ -81,9 +95,15 @@ export default function PortfolioPage() {
         } else {
           setDataSource('Demo Data for Testing');
         }
+        
       } catch (error) {
+        clearTimeout(timeoutId);
         console.error('Failed to fetch portfolio:', error)
-        setError('Failed to load portfolio data. Please check your API connections.')
+        if (error instanceof Error && error.message.includes('timeout')) {
+          setError('Portfolio data request timed out. Using demo data instead.')
+        } else {
+          setError('Failed to load portfolio data. Please check your API connections.')
+        }
       } finally {
         setLoading(false)
       }
@@ -220,7 +240,7 @@ export default function PortfolioPage() {
                   Purchase Date
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sold
+                  <span title="Percentage of total shares purchased that have been sold">Sold</span>
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Country

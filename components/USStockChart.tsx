@@ -1,29 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
+import React, { useState, useEffect, useRef } from 'react';
+import { Chart, registerables } from 'chart.js';
 import { FiX, FiRefreshCw, FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
 import { alphaVantageAPI, USStockData } from '../services/alphaVantageApi';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+// Register Chart.js components
+Chart.register(...registerables);
 
 interface USStockChartProps {
   symbol: string;
@@ -41,6 +22,8 @@ interface ChartDataPoint {
 }
 
 const USStockChart: React.FC<USStockChartProps> = ({ symbol, stockData, onClose }) => {
+  const chartRef = useRef<HTMLCanvasElement>(null);
+  const chartInstance = useRef<Chart | null>(null);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,6 +37,19 @@ const USStockChart: React.FC<USStockChartProps> = ({ symbol, stockData, onClose 
     const interval = setInterval(updateRealTimePrice, 30000);
     return () => clearInterval(interval);
   }, [symbol, timeframe]);
+
+  useEffect(() => {
+    if (chartData.length > 0) {
+      renderChart();
+    }
+    
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+        chartInstance.current = null;
+      }
+    };
+  }, [chartData, priceChange]);
 
   const loadChartData = async () => {
     setLoading(true);
@@ -138,87 +134,145 @@ const USStockChart: React.FC<USStockChartProps> = ({ symbol, stockData, onClose 
     }
   };
 
-  const chartConfig = {
-    labels: chartData.map(point => {
+  const renderChart = () => {
+    if (!chartRef.current || chartData.length === 0) return;
+    
+    // Destroy previous chart
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+      chartInstance.current = null;
+    }
+
+    const ctx = chartRef.current.getContext('2d');
+    if (!ctx) return;
+
+    // Create gradient based on price change
+    const isPositive = priceChange >= 0;
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    
+    if (isPositive) {
+      gradient.addColorStop(0, 'rgba(34, 197, 94, 0.3)'); // Green
+      gradient.addColorStop(1, 'rgba(34, 197, 94, 0.05)');
+    } else {
+      gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)'); // Red
+      gradient.addColorStop(1, 'rgba(239, 68, 68, 0.05)');
+    }
+
+    const labels = chartData.map(point => {
       const date = new Date(point.time);
       return date.toLocaleTimeString('tr-TR', { 
         hour: '2-digit', 
         minute: '2-digit' 
       });
-    }),
-    datasets: [
-      {
-        label: `${symbol} Price`,
-        data: chartData.map(point => point.close),
-        borderColor: priceChange >= 0 ? '#10B981' : '#EF4444',
-        backgroundColor: priceChange >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 2,
-        pointHoverRadius: 6,
-        pointBackgroundColor: priceChange >= 0 ? '#10B981' : '#EF4444',
-      }
-    ]
-  };
+    });
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
+    const prices = chartData.map(point => point.close);
+
+    chartInstance.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: `${symbol} Price`,
+          data: prices,
+          borderColor: isPositive ? '#22C55E' : '#EF4444',
+          backgroundColor: gradient,
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: isPositive ? '#16A34A' : '#DC2626',
+          pointHoverBorderColor: '#FFFFFF',
+          pointHoverBorderWidth: 3,
+        }]
       },
-      tooltip: {
-        mode: 'index' as const,
-        intersect: false,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        borderColor: '#374151',
-        borderWidth: 1,
-        callbacks: {
-          label: function(context: any) {
-            const point = chartData[context.dataIndex];
-            return [
-              `Price: $${point.close.toFixed(2)}`,
-              `High: $${point.high.toFixed(2)}`,
-              `Low: $${point.low.toFixed(2)}`,
-              `Volume: ${point.volume.toLocaleString()}`
-            ];
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          intersect: false,
+          mode: 'index',
+        },
+        animation: {
+          duration: 1000,
+          easing: 'easeOutQuart',
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+            titleColor: '#F9FAFB',
+            bodyColor: '#F9FAFB',
+            borderColor: '#E5E7EB',
+            borderWidth: 1,
+            cornerRadius: 8,
+            displayColors: true,
+            titleFont: {
+              size: 14,
+              weight: 600,
+            },
+            bodyFont: {
+              size: 13,
+            },
+            padding: 12,
+            callbacks: {
+              label: function(context: any) {
+                const point = chartData[context.dataIndex];
+                return [
+                  `Price: $${point.close.toFixed(2)}`,
+                  `High: $${point.high.toFixed(2)}`,
+                  `Low: $${point.low.toFixed(2)}`,
+                  `Volume: ${point.volume.toLocaleString()}`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            display: true,
+            grid: {
+              display: false,
+            },
+            border: {
+              display: false,
+            },
+            ticks: {
+              color: '#6B7280',
+              font: {
+                size: 11,
+                weight: 400,
+              },
+              maxTicksLimit: 8,
+            }
+          },
+          y: {
+            display: true,
+            position: 'left',
+            grid: {
+              color: 'rgba(156, 163, 175, 0.2)',
+            },
+            border: {
+              display: false,
+            },
+            ticks: {
+              color: '#6B7280',
+              font: {
+                size: 11,
+                weight: 400,
+              },
+              callback: function(value: any) {
+                return `$${Number(value).toFixed(2)}`;
+              },
+              padding: 8,
+            }
           }
         }
       }
-    },
-    scales: {
-      x: {
-        display: true,
-        grid: {
-          color: 'rgba(107, 114, 128, 0.1)'
-        },
-        ticks: {
-          color: '#6B7280',
-          maxTicksLimit: 10
-        }
-      },
-      y: {
-        display: true,
-        grid: {
-          color: 'rgba(107, 114, 128, 0.1)'
-        },
-        ticks: {
-          color: '#6B7280',
-          callback: function(value: any) {
-            return '$' + value.toFixed(2);
-          }
-        }
-      }
-    },
-    interaction: {
-      mode: 'nearest' as const,
-      axis: 'x' as const,
-      intersect: false
-    }
+    });
   };
 
   const formatMarketCap = (value?: number) => {
@@ -307,7 +361,7 @@ const USStockChart: React.FC<USStockChartProps> = ({ symbol, stockData, onClose 
                     {error}
                   </div>
                 ) : (
-                  <Line data={chartConfig} options={chartOptions} />
+                  <canvas ref={chartRef} />
                 )}
               </div>
             </div>

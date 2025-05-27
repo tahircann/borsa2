@@ -39,6 +39,7 @@ export default function Navbar({ isAdmin }: NavbarProps) {
     { href: '/portfolio', label: 'Portfolio' },
     { href: '/stock-ranks', label: 'Stock Ranks' },
     { href: '/trades', label: 'Trading History' },
+    { href: '/trade-bot', label: 'Trade Bot' },
     { href: '/performance', label: 'Performance' },
     { href: '/how-it-works', label: 'About' },
     { href: '#', label: 'Subscribe', isButton: true },

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Chart, registerables } from 'chart.js'
 
 // Register Chart.js components
@@ -31,138 +31,65 @@ const formatPercentage = (value: number): string => {
   return `${(value * 100).toFixed(2)}%`;
 };
 
-// Parse date from various formats
+// Optimized date parsing with memoization
+const dateParseCache = new Map<string, Date>();
+
 const parseDate = (dateString: string): Date => {
-  // Add a log at start to see the exact format
-  console.log(`Parsing date: "${dateString}" (length: ${dateString.length})`);
-  
-  // Common date formats in Turkish systems
-  const formats = [
-    // YYYYMMDD format (e.g., "20230520")
-    { 
-      regex: /^(\d{4})(\d{2})(\d{2})$/, 
-      parser: (s: string) => {
-        const year = s.substring(0, 4);
-        const month = s.substring(4, 6);
-        const day = s.substring(6, 8);
-        return new Date(`${year}-${month}-${day}`);
-      }
-    },
-    
-    // Try direct parsing first (ISO format: YYYY-MM-DD)
-    { regex: /^\d{4}-\d{2}-\d{2}/, parser: (s: string) => new Date(s) },
-    
-    // DD.MM.YYYY (common in Turkey)
-    { 
-      regex: /^(\d{2})\.(\d{2})\.(\d{4})/, 
-      parser: (s: string) => {
-        const parts = s.split('.');
-        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-      }
-    },
-    
-    // DD/MM/YYYY
-    { 
-      regex: /^(\d{2})\/(\d{2})\/(\d{4})/, 
-      parser: (s: string) => {
-        const parts = s.split('/');
-        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-      }
-    },
-    
-    // MM/DD/YYYY (US format)
-    { 
-      regex: /^(\d{1,2})\/(\d{1,2})\/(\d{4})/, 
-      parser: (s: string) => new Date(s)
-    },
-    
-    // Unix timestamp (milliseconds)
-    {
-      regex: /^\d{10,13}$/,
-      parser: (s: string) => new Date(Number(s))
-    },
-    
-    // Day-Month-Year (e.g., "20 Mayıs 2023")
-    {
-      regex: /^(\d{1,2})\s+([A-Za-zçğıöşüÇĞİÖŞÜ]+)\s+(\d{4})$/,
-      parser: (s: string) => {
-        const months = {
-          'ocak': 0, 'şubat': 1, 'mart': 2, 'nisan': 3, 'mayıs': 4, 'haziran': 5,
-          'temmuz': 6, 'ağustos': 7, 'eylül': 8, 'ekim': 9, 'kasım': 10, 'aralık': 11
-        };
-        
-        const parts = s.match(/^(\d{1,2})\s+([A-Za-zçğıöşüÇĞİÖŞÜ]+)\s+(\d{4})$/);
-        if (parts) {
-          const day = parseInt(parts[1]);
-          const monthStr = parts[2].toLowerCase();
-          const year = parseInt(parts[3]);
-          
-          // Find month index
-          let monthIndex = -1;
-          for (const [name, index] of Object.entries(months)) {
-            if (monthStr.startsWith(name) || name.startsWith(monthStr)) {
-              monthIndex = index;
-              break;
-            }
-          }
-          
-          if (monthIndex >= 0) {
-            return new Date(year, monthIndex, day);
-          }
-        }
-        return new Date('Invalid Date');
-      }
-    }
-  ];
-  
-  for (const format of formats) {
-    if (format.regex.test(dateString)) {
-      const date = format.parser(dateString);
-      if (!isNaN(date.getTime())) {
-        console.log(`Successfully parsed "${dateString}" to ${date.toLocaleDateString('tr-TR')}`);
-        return date;
-      }
-    }
+  // Check cache first
+  if (dateParseCache.has(dateString)) {
+    return dateParseCache.get(dateString)!;
   }
   
-  // Log problematic date for debugging
-  console.log(`Could not parse date: "${dateString}"`);
-  return new Date('Invalid Date');
+  let date: Date;
+  
+  // Try most common formats first (optimize for speed)
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+    // ISO format: YYYY-MM-DD (fastest)
+    date = new Date(dateString);
+  } else if (/^\d{8}$/.test(dateString)) {
+    // YYYYMMDD format
+    const year = dateString.substring(0, 4);
+    const month = dateString.substring(4, 6);
+    const day = dateString.substring(6, 8);
+    date = new Date(`${year}-${month}-${day}`);
+  } else if (/^\d{10,13}$/.test(dateString)) {
+    // Unix timestamp
+    date = new Date(Number(dateString));
+  } else {
+    // Fallback to standard parsing
+    date = new Date(dateString);
+  }
+  
+  // Cache the result
+  if (!isNaN(date.getTime())) {
+    dateParseCache.set(dateString, date);
+  }
+  
+  return date;
 };
 
 // Format date strings for display
 const formatDate = (dateString: string): string => {
   try {
-    // Check if the date is a valid date string
-    if (!dateString || dateString === 'Invalid Date') {
-      return 'Geçersiz Tarih';
-    }
-    
-    // Try to parse the date using our custom parser
     const date = parseDate(dateString);
     
-    // Verify we have a valid date
     if (isNaN(date.getTime())) {
-      console.log(`Invalid date format: ${dateString}`);
-      return dateString; // Return original string if can't be parsed
+      return dateString;
     }
     
-    // Format date as DD MMM YYYY (e.g., "20 May 2023")
     return date.toLocaleDateString('tr-TR', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
   } catch (err) {
-    console.error(`Error formatting date: ${dateString}`, err);
-    return dateString; // Return original if there's an error
+    return dateString;
   }
 };
 
-// Format date for sorting and internal use
+// Format date for chart labels
 const formatDateForChart = (date: Date): string => {
   const year = date.getFullYear();
-  // Month is 0-indexed, so add 1 and pad with leading zero if needed
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   
@@ -174,13 +101,32 @@ export default function PerformanceChart({ data, spData }: PerformanceChartProps
   const chartInstance = useRef<Chart | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Debug array for console
-  const dataPoints = data.map(point => `${formatDate(point.date)}: ${point.return}`);
-  console.log("Data points to be charted:", dataPoints);
-  if (spData) {
-    const spDataPoints = spData.map(point => `${formatDate(point.date)}: ${point.return}`);
-    console.log("S&P 500 data points:", spDataPoints);
-  }
+  // Memoize processed data to avoid recalculation on every render
+  const { processedData, processedSpData } = useMemo(() => {
+    const portfolioData = [...data]
+      .map(item => ({
+        date: parseDate(item.date),
+        value: item.value,
+        return: item.return
+      }))
+      .filter(item => !isNaN(item.date.getTime()))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    const spData500 = spData ? 
+      [...spData]
+        .map(item => ({
+          date: parseDate(item.date),
+          value: item.value,
+          return: item.return
+        }))
+        .filter(item => !isNaN(item.date.getTime()))
+        .sort((a, b) => a.date.getTime() - b.date.getTime()) : [];
+
+    return {
+      processedData: portfolioData,
+      processedSpData: spData500
+    };
+  }, [data, spData]);
 
   useEffect(() => {
     // Clean up previous chart instance if exists
@@ -202,26 +148,6 @@ export default function PerformanceChart({ data, spData }: PerformanceChartProps
     setError(null);
     
     try {
-      // Process and sort data by date
-      const processedData = [...data]
-        .map(item => ({
-          date: parseDate(item.date),
-          value: item.value,
-          return: item.return
-        }))
-        .filter(item => !isNaN(item.date.getTime()))
-        .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-      const processedSpData = spData ? 
-        [...spData]
-          .map(item => ({
-            date: parseDate(item.date),
-            value: item.value,
-            return: item.return
-          }))
-          .filter(item => !isNaN(item.date.getTime()))
-          .sort((a, b) => a.date.getTime() - b.date.getTime()) : [];
-
       if (processedData.length === 0) {
         setError("No valid data points to display");
         return;
@@ -295,7 +221,7 @@ export default function PerformanceChart({ data, spData }: PerformanceChartProps
             mode: 'index',
           },
           animation: {
-            duration: 1000,
+            duration: 300, // Reduced from 1000ms to 300ms for faster loading
             easing: 'easeOutQuart',
           },
           plugins: {
@@ -364,7 +290,7 @@ export default function PerformanceChart({ data, spData }: PerformanceChartProps
                   size: 12,
                   weight: 400,
                 },
-                maxTicksLimit: 8,
+                maxTicksLimit: 6, // Reduced from 8 to 6 for better performance
                 callback: function(value: any, index: number) {
                   const dateStr = labels[index];
                   if (dateStr) {
@@ -410,7 +336,7 @@ export default function PerformanceChart({ data, spData }: PerformanceChartProps
         chartInstance.current = null;
       }
     };
-  }, [data, spData]);
+  }, [processedData, processedSpData]);
 
   return (
     <div className="w-full h-full">

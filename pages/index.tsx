@@ -1,8 +1,10 @@
 import { FiTrendingUp, FiTrendingDown, FiExternalLink, FiCreditCard, FiBarChart2, FiPieChart, FiDollarSign, FiArrowRight } from 'react-icons/fi'
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, Suspense, lazy } from 'react'
 import StockChart from '@/components/StockChart'
-import PerformanceChart from '@/components/PerformanceChart'
-import AllocationChart from '@/components/AllocationChart'
+// Lazy load PerformanceChart for better performance
+const PerformanceChart = lazy(() => import('@/components/PerformanceChart'))
+// Lazy load AllocationChart for better performance
+const AllocationChart = lazy(() => import('@/components/AllocationChart'))
 import { getPerformance, getPortfolio, getAllocation, getSP500Data } from '../services/ibapi'
 import { formatCurrency, formatPercent } from '../utils/formatters'
 import { SubscriptionContext } from '@/components/Layout'
@@ -25,21 +27,42 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
+      setErrorMessage(null) // Clear any previous error messages
       try {
-        // Fetch all data concurrently
-        const [performanceResult, portfolioResult, allocationResult, sp500Result] = await Promise.all([
-          getPerformance(period),
-          getPortfolio(),
-          getAllocation(),
-          getSP500Data(period)
-        ])
+        // Fetch data with timeout and parallel processing
+        const fetchWithTimeout = (promise: Promise<any>, timeout: number) => {
+          return Promise.race([
+            promise,
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout')), timeout)
+            )
+          ]);
+        };
+
+        // Use longer timeouts for dashboard critical data
+        const [performanceResult, portfolioResult] = await Promise.all([
+          fetchWithTimeout(getPerformance(period), 10000), // Increased from 5000 to 10000
+          fetchWithTimeout(getPortfolio(), 15000) // Increased from 5000 to 15000
+        ]);
         
         setPerformance(performanceResult)
         setPortfolio(portfolioResult)
-        setAllocation(allocationResult)
-        setSp500Data(sp500Result)
+        setErrorMessage(null) // Clear error message on successful load
+        
+        // Fetch less critical data separately to avoid blocking UI
+        Promise.all([
+          fetchWithTimeout(getAllocation(), 12000), // Increased from 8000 to 12000
+          fetchWithTimeout(getSP500Data(period), 12000) // Increased from 8000 to 12000
+        ]).then(([allocationResult, sp500Result]) => {
+          setAllocation(allocationResult)
+          setSp500Data(sp500Result)
+        }).catch(error => {
+          console.warn('Secondary data fetch failed:', error);
+          // Set fallback data for non-critical components
+        });
+        
       } catch (error) {
-        console.error('Error fetching data:', error)
+        console.error('Error fetching critical data:', error)
         if (error instanceof Error) {
           setErrorMessage(`Failed to load data: ${error.message}`)
         } else {
@@ -145,65 +168,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Performance Cards */}
-        {performance && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow relative">
-              {(!isSubscribed && !subscriptionLoading) && (
-                <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to view performance" />
-              )}
-              <div className="text-sm text-gray-500 mb-1">Today's Change</div>
-              <div className="text-2xl font-semibold text-gray-800">
-                {loading ? (
-                  '-'
-                ) : (
-                  performance.todayChange !== undefined ? (
-                    <span className={performance.todayChange >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {performance.todayChange >= 0 ? '+' : ''}{performance.todayChange.toFixed(2)}%
-                    </span>
-                  ) : '-'
-                )}
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow relative">
-              {(!isSubscribed && !subscriptionLoading) && (
-                <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to view monthly performance" />
-              )}
-              <div className="text-sm text-gray-500 mb-1">Monthly Change</div>
-              <div className="text-2xl font-semibold text-gray-800">
-                {loading ? (
-                  '-'
-                ) : (
-                  performance.monthChange !== undefined ? (
-                    <span className={performance.monthChange >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {performance.monthChange >= 0 ? '+' : ''}{performance.monthChange.toFixed(2)}%
-                    </span>
-                  ) : '-'
-                )}
-              </div>
-            </div>
-            
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow relative">
-              {(!isSubscribed && !subscriptionLoading) && (
-                <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to view yearly performance" />
-              )}
-              <div className="text-sm text-gray-500 mb-1">Yearly Change</div>
-              <div className="text-2xl font-semibold text-gray-800">
-                {loading ? (
-                  '-'
-                ) : (
-                  performance.yearChange !== undefined ? (
-                    <span className={performance.yearChange >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      {performance.yearChange >= 0 ? '+' : ''}{performance.yearChange.toFixed(2)}%
-                    </span>
-                  ) : '-'
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Performance Chart */}
           <div className="lg:col-span-2">
@@ -247,50 +211,35 @@ export default function Home() {
               
               {loading ? (
                 <div className="h-80 flex items-center justify-center">
-                  <p>Loading...</p>
+                  <div className="animate-pulse">
+                    <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+                    <div className="space-y-3">
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                  </div>
                 </div>
               ) : performance && performance.data ? (
                 <>
                   <div className="h-80">
-                    <PerformanceChart 
-                      data={performance.data} 
-                      spData={sp500Data?.data || undefined}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4">
-                    <div>
-                      <p className="text-sm text-gray-500">Today</p>
-                      <p className={`text-lg font-semibold ${performance.todayChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {performance.todayChange !== undefined ? (
-                          <>{performance.todayChange >= 0 ? '+' : ''}{performance.todayChange.toFixed(2)}%</>
-                        ) : ('-')}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">This Week</p>
-                      <p className={`text-lg font-semibold ${performance.weekChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {performance.weekChange !== undefined ? (
-                          <>{performance.weekChange >= 0 ? '+' : ''}{performance.weekChange.toFixed(2)}%</>
-                        ) : ('0.00%')}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">This Month</p>
-                      <p className={`text-lg font-semibold ${performance.monthChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {performance.monthChange !== undefined ? (
-                          <>{performance.monthChange >= 0 ? '+' : ''}{performance.monthChange.toFixed(2)}%</>
-                        ) : ('0.00%')}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">This Year</p>
-                      <p className={`text-lg font-semibold ${performance.yearChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {performance.yearChange !== undefined ? (
-                          <>{performance.yearChange >= 0 ? '+' : ''}{performance.yearChange.toFixed(2)}%</>
-                        ) : ('0.00%')}
-                      </p>
-                    </div>
+                    <Suspense fallback={
+                      <div className="h-80 flex items-center justify-center">
+                        <div className="animate-pulse">
+                          <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+                          <div className="space-y-3">
+                            <div className="h-4 bg-gray-200 rounded w-full"></div>
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                      </div>
+                    }>
+                      <PerformanceChart 
+                        data={performance.data} 
+                        spData={sp500Data?.data || undefined}
+                      />
+                    </Suspense>
                   </div>
                 </>
               ) : (
@@ -368,11 +317,17 @@ export default function Home() {
               </div>
             ) : allocation && allocation.sector && allocation.sector.length > 0 ? (
               <div className="h-60">
-                <AllocationChart 
-                  data={allocation.sector} 
-                  totalValue={allocation.sector.reduce((sum: number, item: any) => sum + item.value, 0)} 
-                  title="Sector" 
-                />
+                <Suspense fallback={
+                  <div className="h-60 flex items-center justify-center">
+                    <p>Loading...</p>
+                  </div>
+                }>
+                  <AllocationChart 
+                    data={allocation.sector} 
+                    totalValue={allocation.sector.reduce((sum: number, item: any) => sum + item.value, 0)} 
+                    title="Sector" 
+                  />
+                </Suspense>
               </div>
             ) : (
               <div className="h-60 flex items-center justify-center">

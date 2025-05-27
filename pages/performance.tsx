@@ -142,37 +142,7 @@ export default function PerformancePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-sm text-gray-500 mb-1">Portfolio Start Value</div>
-          <div className="text-2xl font-semibold">
-            {loading ? (
-              '-'
-            ) : (
-              <>$
-                {performanceData?.startValue.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </>
-            )}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="text-sm text-gray-500 mb-1">Portfolio Current Value</div>
-          <div className="text-2xl font-semibold">
-            {loading ? (
-              '-'
-            ) : (
-              <>$
-                {performanceData?.endValue.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </>
-            )}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="text-sm text-gray-500 mb-1">Portfolio Performance</div>
           {loading ? (

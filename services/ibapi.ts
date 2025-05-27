@@ -32,7 +32,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // 15 saniye timeout
+  timeout: 20000, // Increased from 15000 to 20000 (20 seconds)
 });
 
 // İstek interceptor
@@ -118,6 +118,30 @@ export type Trade = {
   orderType: string;
   status: string;
   canCancel: boolean;
+  acct?: string;
+  conidex?: string;
+  conid?: number;
+  account?: string;
+  cashCcy?: string;
+  sizeAndFills?: string;
+  description1?: string;
+  secType?: string;
+  listingExchange?: string;
+  remainingQuantity?: number;
+  filledQuantity?: number;
+  totalSize?: number;
+  companyName?: string;
+  order_ccp_status?: string;
+  avgPrice?: string;
+  origOrderType?: string;
+  supportsTaxOpt?: string;
+  lastExecutionTime?: string;
+  bgColor?: string;
+  fgColor?: string;
+  order_ref?: string;
+  timeInForce?: string;
+  lastExecutionTime_r?: number;
+  side?: string;
 };
 
 export type Dividend = {
@@ -604,11 +628,12 @@ export const getTrades = async (
       console.log('API bağlı, gerçek işlem verisi alınmaya çalışılıyor...');
       
       try {
-        console.log('IB Gateway API isteği yapılıyor... Endpoint: iserver/account/orders');
+        // Verdiğiniz API formatına göre filters=filled parametresi ile istek yapıyoruz
+        console.log('IB Gateway API isteği yapılıyor... Endpoint: iserver/account/orders?filters=filled&force=true');
         const response = await apiClient.get('', {
           params: {
             target: 'ibgateway',
-            path: 'iserver/account/orders'
+            path: 'iserver/account/orders?filters=filled&force=true'
           },
           validateStatus: () => true,
         });
@@ -618,11 +643,8 @@ export const getTrades = async (
         if (response.status === 200) {
           console.log('IB Gateway yanıt içeriği:', response.data);
           
-          // Debug: Doğrudan companyName ve diğer alanların tüm yanıtta olup olmadığını kontrol et
+          // API yanıtını kontrol et
           if (response.data && typeof response.data === 'object') {
-            console.log('Yanıtta companyName alanı var mı?', 'companyName' in response.data);
-            
-            // Veri yapısını analiz et
             const dataFields = Object.keys(response.data);
             console.log('Yanıtta bulunan ana alanlar:', dataFields);
             
@@ -630,11 +652,6 @@ export const getTrades = async (
             if (response.data.orders && Array.isArray(response.data.orders)) {
               console.log('İlk order örneğindeki alanlar:', 
                 response.data.orders.length > 0 ? Object.keys(response.data.orders[0]) : 'Boş');
-              
-              // companyName alanını doğrudan kontrol et
-              if (response.data.orders.length > 0) {
-                console.log('companyName mevcut mu?', 'companyName' in response.data.orders[0]);
-              }
             }
           }
           
@@ -643,36 +660,66 @@ export const getTrades = async (
             console.log('IB Gateway\'den alınan emirler sayısı:', ibOrders.length);
             console.log('İlk emir örneği:', JSON.stringify(ibOrders[0], null, 2));
             
-            // Use the normalization function for each trade
+            // Verdiğiniz API formatına göre trade verilerini map ediyoruz
             const trades: Trade[] = ibOrders.map((order: any, index: number) => {
-              if (index < 3) { // Only log first 3 orders to avoid console spam
+              if (index < 3) { // İlk 3 order için debug bilgisi
                 console.log(`Processing order ${index}:`, JSON.stringify(order, null, 2));
-                
-                // Check directly if order has companyName field
-                if (order.companyName) {
-                  console.log(`Buldum! Emir #${index} için companyName: ${order.companyName}`);
-                }
               }
               
-              // Enhanced direct field mapping based on the observed API response
-              const normalized = {
+              // API formatınıza göre field mapping
+              const trade: Trade = {
+                // Temel alanlar
                 id: order.orderId?.toString() || `order-${index}`,
                 orderId: order.orderId?.toString() || `${index+100000}`,
                 ticker: order.ticker || order.description1 || 'Unknown',
-                description: order.orderDesc || 'Standard Order',
-                company: order.companyName || 'Unknown',
-                orderDescription: order.orderDesc || 'Market Order',
+                description: order.orderDesc || order.description1 || 'Standard Order',
+                company: order.companyName || 'Unknown Company',
+                orderDescription: order.orderDesc || `${order.sizeAndFills || ''} ${order.orderType || 'Market'}`.trim(),
                 orderType: order.orderType || order.origOrderType || 'Market',
-                status: order.status || 'Unknown',
-                canCancel: ['PreSubmitted', 'Submitted', 'Pending', 'Accepted'].includes(order.status)
+                status: order.status || order.order_ccp_status || 'Unknown',
+                canCancel: ['PreSubmitted', 'Submitted', 'Pending', 'Accepted', 'Active'].includes(order.status),
+                
+                // API formatınızdaki ek alanlar
+                acct: order.acct,
+                conidex: order.conidex,
+                conid: order.conid,
+                account: order.account,
+                cashCcy: order.cashCcy,
+                sizeAndFills: order.sizeAndFills,
+                description1: order.description1,
+                secType: order.secType,
+                listingExchange: order.listingExchange,
+                remainingQuantity: order.remainingQuantity,
+                filledQuantity: order.filledQuantity,
+                totalSize: order.totalSize,
+                companyName: order.companyName,
+                order_ccp_status: order.order_ccp_status,
+                avgPrice: order.avgPrice,
+                origOrderType: order.origOrderType,
+                supportsTaxOpt: order.supportsTaxOpt,
+                lastExecutionTime: order.lastExecutionTime,
+                bgColor: order.bgColor,
+                fgColor: order.fgColor,
+                order_ref: order.order_ref,
+                timeInForce: order.timeInForce,
+                lastExecutionTime_r: order.lastExecutionTime_r,
+                side: order.side
               };
               
               // Log the normalized result for verification
               if (index < 3) {
-                console.log(`Normalized order ${index}:`, normalized);
+                console.log(`Normalized order ${index}:`, {
+                  orderId: trade.orderId,
+                  ticker: trade.ticker,
+                  company: trade.company,
+                  status: trade.status,
+                  side: trade.side,
+                  avgPrice: trade.avgPrice,
+                  filledQuantity: trade.filledQuantity
+                });
               }
               
-              return normalized;
+              return trade;
             });
             
             // Log some samples of the processed trades to verify field extraction
@@ -682,7 +729,9 @@ export const getTrades = async (
                 console.log(`İşlem ${i+1}:`, {
                   ticker: trade.ticker,
                   company: trade.company,
-                  status: trade.status
+                  status: trade.status,
+                  side: trade.side,
+                  orderType: trade.orderType
                 });
               });
             }
@@ -699,20 +748,159 @@ export const getTrades = async (
           } else {
             console.log('IB Gateway\'den alınan emirler boş veya bulunamadı.');
           }
+        } else {
+          console.error('API yanıt hatası:', response.status, response.statusText);
         }
       } catch (ibError) {
         console.error('IB Gateway\'den işlem verisi alınamadı:', ibError);
       }
     }
     
-    // Gerçek veri alınamadığında boş dizi döndür, mock veri gösterme
-    console.log('Gerçek veri alınamadı ve mock veri kullanımı devre dışı bırakıldı. Boş veri döndürülüyor.');
+    // Gerçek veri alınamadığında boş dizi döndür
+    console.log('Gerçek veri alınamadı, boş veri döndürülüyor.');
     return {
       trades: [],
       total: 0,
     };
   } catch (error) {
     console.error('Trades API hatası:', error);
+    return {
+      trades: [],
+      total: 0,
+    };
+  }
+};
+
+// Tüm order'ları alma (filter olmadan)
+export const getAllOrders = async (
+  page = 1,
+  limit = 20
+): Promise<{ trades: Trade[]; total: number }> => {
+  try {
+    let isApiConnected = false;
+    
+    try {
+      isApiConnected = await checkApiConnection();
+    } catch (connError) {
+      console.error('API bağlantı kontrolü sırasında hata:', connError);
+      isApiConnected = false;
+    }
+    
+    console.log('API bağlantı durumu:', isApiConnected ? 'Bağlı' : 'Bağlı değil');
+    
+    if (isApiConnected) {
+      console.log('API bağlı, tüm order verisi alınmaya çalışılıyor...');
+      
+      try {
+        // Filters parametresi olmadan tüm order'ları getiriyoruz
+        console.log('IB Gateway API isteği yapılıyor... Endpoint: iserver/account/orders');
+        const response = await apiClient.get('', {
+          params: {
+            target: 'ibgateway',
+            path: 'iserver/account/orders'
+          },
+          validateStatus: () => true,
+        });
+        
+        console.log('IB Gateway yanıtı:', response.status, response.statusText);
+        
+        if (response.status === 200) {
+          console.log('IB Gateway yanıt içeriği:', response.data);
+          
+          // API yanıtını kontrol et
+          if (response.data && typeof response.data === 'object') {
+            const dataFields = Object.keys(response.data);
+            console.log('Yanıtta bulunan ana alanlar:', dataFields);
+            
+            // orders alanını kontrol et
+            if (response.data.orders && Array.isArray(response.data.orders)) {
+              console.log('İlk order örneğindeki alanlar:', 
+                response.data.orders.length > 0 ? Object.keys(response.data.orders[0]) : 'Boş');
+            }
+          }
+          
+          const ibOrders = response.data?.orders || [];
+          if (ibOrders.length > 0) {
+            console.log('IB Gateway\'den alınan tüm emirler sayısı:', ibOrders.length);
+            console.log('İlk emir örneği:', JSON.stringify(ibOrders[0], null, 2));
+            
+            // Tüm order'ları API formatına göre map ediyoruz
+            const trades: Trade[] = ibOrders.map((order: any, index: number) => {
+              if (index < 3) { // İlk 3 order için debug bilgisi
+                console.log(`Processing order ${index}:`, JSON.stringify(order, null, 2));
+              }
+              
+              // API formatınıza göre field mapping
+              const trade: Trade = {
+                // Temel alanlar
+                id: order.orderId?.toString() || `order-${index}`,
+                orderId: order.orderId?.toString() || `${index+100000}`,
+                ticker: order.ticker || order.description1 || 'Unknown',
+                description: order.orderDesc || order.description1 || 'Standard Order',
+                company: order.companyName || 'Unknown Company',
+                orderDescription: order.orderDesc || `${order.sizeAndFills || ''} ${order.orderType || 'Market'}`.trim(),
+                orderType: order.orderType || order.origOrderType || 'Market',
+                status: order.status || order.order_ccp_status || 'Unknown',
+                canCancel: ['PreSubmitted', 'Submitted', 'Pending', 'Accepted', 'Active'].includes(order.status),
+                
+                // API formatınızdaki ek alanlar
+                acct: order.acct,
+                conidex: order.conidex,
+                conid: order.conid,
+                account: order.account,
+                cashCcy: order.cashCcy,
+                sizeAndFills: order.sizeAndFills,
+                description1: order.description1,
+                secType: order.secType,
+                listingExchange: order.listingExchange,
+                remainingQuantity: order.remainingQuantity,
+                filledQuantity: order.filledQuantity,
+                totalSize: order.totalSize,
+                companyName: order.companyName,
+                order_ccp_status: order.order_ccp_status,
+                avgPrice: order.avgPrice,
+                origOrderType: order.origOrderType,
+                supportsTaxOpt: order.supportsTaxOpt,
+                lastExecutionTime: order.lastExecutionTime,
+                bgColor: order.bgColor,
+                fgColor: order.fgColor,
+                order_ref: order.order_ref,
+                timeInForce: order.timeInForce,
+                lastExecutionTime_r: order.lastExecutionTime_r,
+                side: order.side
+              };
+              
+              return trade;
+            });
+            
+            console.log(`Toplam ${trades.length} order bulundu.`);
+            
+            const startIndex = (page - 1) * limit;
+            const endIndex = startIndex + limit;
+            
+            return {
+              trades: trades.slice(startIndex, endIndex),
+              total: trades.length,
+            };
+          } else {
+            console.log('IB Gateway\'den alınan order\'lar boş veya bulunamadı.');
+          }
+        } else {
+          console.error('API yanıt hatası:', response.status, response.statusText);
+        }
+      } catch (ibError) {
+        console.error('IB Gateway\'den order verisi alınamadı:', ibError);
+      }
+    }
+    
+    // Gerçek veri alınamadığında boş dizi döndür
+    console.log('Gerçek veri alınamadı, boş veri döndürülüyor.');
+    return {
+      trades: [],
+      total: 0,
+    };
+  } catch (error) {
+    console.error('Orders API hatası:', error);
     return {
       trades: [],
       total: 0,
@@ -1035,8 +1223,8 @@ export const getPositions = async (): Promise<any> => {
 export const getAllocation = async (): Promise<AllocationData> => {
   try {
     console.log('Fetching allocation data...');
-    const response = await axios.get('http://127.0.0.1:5056/allocation', {
-      timeout: 5000
+    const response = await axios.get('http://127.0.0.1:5056/api/allocation', {
+      timeout: 12000 // Increased from 8000 to 12000
     });
     
     console.log('Allocation data received:', response.data);
@@ -1197,4 +1385,5 @@ export default {
   getPositions,
   getAllocation,
   getSP500Data,
+  getAllOrders,
 }; 
