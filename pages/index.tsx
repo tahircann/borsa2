@@ -249,12 +249,6 @@ export default function Home() {
               )}
               
               <div className="flex justify-between mt-4">
-                <Link href="/performance" className="text-blue-600 hover:text-blue-800 text-sm flex items-center">
-                  View detailed performance <FiArrowRight className="ml-1" />
-                </Link>
-                <Link href="/portfolio-stock-ranks" className="text-blue-600 hover:text-blue-800 text-sm flex items-center">
-                  Portfolio Stock Ranks <FiArrowRight className="ml-1" />
-                </Link>
               </div>
             </div>
           </div>

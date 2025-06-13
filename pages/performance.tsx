@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
-import { getPerformance, getSP500Data } from '@/services/ibapi'
+import { getPerformance, getSP500Data, getAllocation, AllocationData, AllocationItem } from '@/services/ibapi'
 import PerformanceChart from '@/components/PerformanceChart'
+import AllocationChart from '@/components/AllocationChart'
 
 export default function PerformancePage() {
   const [period, setPeriod] = useState('1m')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [chartKey, setChartKey] = useState(0); // Force chart re-render
+  const [allocationData, setAllocationData] = useState<AllocationData | null>(null)
   const [performanceData, setPerformanceData] = useState<{
     data: { date: string; value: number; return: number }[];
     startValue: number;
@@ -22,6 +24,12 @@ export default function PerformancePage() {
     endValue: number;
     percentChange: number;
   } | null>(null)
+
+  // Calculate total values
+  const calculateTotal = (data: AllocationItem[] | undefined): number => {
+    if (!data || data.length === 0) return 0;
+    return data.reduce((sum, item) => sum + item.value, 0);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,7 +52,7 @@ export default function PerformancePage() {
           // Add return values if they don't exist
           const enhancedData = {
             ...portfolioResult,
-            data: portfolioResult.data.map(item => {
+            data: portfolioResult.data.map((item: any) => {
               // If return already exists, keep it
               if ('return' in item) {
                 return item as { date: string; value: number; return: number };
@@ -75,6 +83,14 @@ export default function PerformancePage() {
         } else {
           console.warn('No S&P 500 data received');
           setSp500Data(null);
+        }
+        
+        // Fetch allocation data separately to avoid blocking UI
+        try {
+          const allocationResult = await getAllocation();
+          setAllocationData(allocationResult);
+        } catch (allocationError) {
+          console.warn('Failed to fetch allocation data:', allocationError);
         }
         
         // Increment chart key to force re-render
@@ -220,6 +236,62 @@ export default function PerformancePage() {
           )}
         </div>
       </div>
+
+      {/* Portfolio Allocation Charts */}
+      {allocationData && (
+        <div className="mb-6">
+          <h2 className="text-xl font-bold mb-4">Portfolio Allocation</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Asset Class Chart */}
+            {allocationData.assetClass && allocationData.assetClass.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="h-[300px]">
+                  <AllocationChart 
+                    data={allocationData.assetClass.map((item, index) => ({
+                      ...item,
+                      color: item.color || ['#8fffa9', '#e9e9e9', '#75d7ff', '#c9c9c9'][index % 4]
+                    }))} 
+                    totalValue={calculateTotal(allocationData.assetClass)} 
+                    title="Asset Class" 
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Sector Chart */}
+            {allocationData.sector && allocationData.sector.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="h-[300px]">
+                  <AllocationChart 
+                    data={allocationData.sector.map((item, index) => ({
+                      ...item,
+                      color: item.color || ['#292b3c', '#f9d673', '#ff85c0', '#aaaaaa', '#5bc0de', '#99ddff', '#d9534f', '#f0ad4e'][index % 8]
+                    }))} 
+                    totalValue={calculateTotal(allocationData.sector)} 
+                    title="Sector" 
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Industry Chart */}
+            {allocationData.industry && allocationData.industry.length > 0 && (
+              <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="h-[300px]">
+                  <AllocationChart 
+                    data={allocationData.industry.map((item, index) => ({
+                      ...item,
+                      color: item.color || ['#bc8f50', '#f0ad4e', '#ceeaff', '#f3f3ab', '#ffea95', '#ff7575', '#ffc8b3', '#9e9e9e'][index % 8]
+                    }))} 
+                    totalValue={calculateTotal(allocationData.industry)} 
+                    title="Industry" 
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 } 

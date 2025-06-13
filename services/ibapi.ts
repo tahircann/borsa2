@@ -332,156 +332,149 @@ export const getPortfolio = async (): Promise<Portfolio> => {
   try {
     const isApiConnected = await checkApiConnection();
     
-    if (isApiConnected) {
-      console.log('API bağlı, gerçek portföy verisi alınıyor...');
-      console.log('Kullanılan hesap ID:', IB_ACCOUNT_ID);
-      
-      // Bu hesabın özetini ve pozisyonlarını al
-      const summaryResponse = await apiClient.get('', {
+    if (!isApiConnected) {
+      throw new Error('IBKR API connection failed. Please ensure IBKR Gateway/TWS is running and accessible.');
+    }
+
+    console.log('API bağlı, gerçek portföy verisi alınıyor...');
+    console.log('Kullanılan hesap ID:', IB_ACCOUNT_ID);
+    
+    // Get account summary and positions
+    const [summaryResponse, positionsResponse] = await Promise.all([
+      apiClient.get('', {
         params: {
           target: 'ibgateway',
           path: `portfolio/${IB_ACCOUNT_ID}/summary`
         },
         validateStatus: () => true,
-      });
-      
-      const positionsResponse = await apiClient.get('', {
+      }),
+      apiClient.get('', {
         params: {
           target: 'ibgateway',
           path: `portfolio/${IB_ACCOUNT_ID}/positions/0`
         },
         validateStatus: () => true,
-      });
+      })
+    ]);
 
-      // Get trades data for purchase dates and sale information
-      const tradesResponse = await apiClient.get('', {
-        params: {
-          target: 'ibgateway',
-          path: 'iserver/account/orders'
-        },
-        validateStatus: () => true,
-      });
-      
-      if (summaryResponse.status === 200 && positionsResponse.status === 200) {
-        const summary = summaryResponse.data;
-        const positions = positionsResponse.data || [];
-        const trades = tradesResponse.status === 200 ? tradesResponse.data?.orders || [] : [];
-        
-        console.log('Alınan pozisyon verisi:', JSON.stringify(positions, null, 2));
-        console.log('Alınan işlem verisi:', trades.length, 'trades');
-        
-        // Extract symbols for Alpha Vantage API calls
-        const symbols = positions.map((pos: any) => pos.contractDesc || pos.symbol).filter(Boolean);
-        
-        // Get dividend and country data from Alpha Vantage
-        let stockMetadata = new Map();
-        try {
-          console.log('Alpha Vantage API\'den temettü ve ülke bilgileri alınıyor...');
-          stockMetadata = await alphaVantageAPI.getStockMetadata(symbols);
-          console.log('Alpha Vantage metaveri alındı:', stockMetadata.size, 'hisse için');
-        } catch (error) {
-          console.error('Alpha Vantage API hatası:', error);
-        }
+    if (summaryResponse.status !== 200 || positionsResponse.status !== 200) {
+      throw new Error(`API request failed: Summary=${summaryResponse.status}, Positions=${positionsResponse.status}`);
+    }
 
-        // Process trades to get purchase dates and sale information
-        const tradesBySymbol = new Map();
-        trades.forEach((trade: any) => {
-          const symbol = trade.ticker || trade.description1 || trade.contractDesc;
-          if (symbol) {
-            if (!tradesBySymbol.has(symbol)) {
-              tradesBySymbol.set(symbol, []);
-            }
-            tradesBySymbol.get(symbol).push({
-              date: trade.lastExecutionTime || trade.submittedAt || new Date().toISOString(),
-              action: trade.side || 'BUY',
-              quantity: trade.totalSize || trade.filledQuantity || 0,
-              status: trade.status || 'Unknown'
-            });
-          }
-        });
+    const summary = summaryResponse.data;
+    const positions = positionsResponse.data || [];
+    
+    console.log('Alınan pozisyon verisi:', JSON.stringify(positions, null, 2));
+    
+    if (!Array.isArray(positions) || positions.length === 0) {
+      console.warn('No positions found in portfolio');
+      return {
+        totalValue: Number(summary.totalcashvalue?.amount || summary.settledcash?.amount || 0),
+        cash: Number(summary.totalcashvalue?.amount || summary.settledcash?.amount || 0),
+        positions: []
+      };
+    }
 
-        // Nakit değerini bul (IB API'de tutarsız biçimler var)
-        let cashValue = 0;
-        if (summary.totalcashvalue && summary.totalcashvalue.amount) {
-          cashValue = Number(summary.totalcashvalue.amount);
-        } else if (summary.settledcash && summary.settledcash.amount) {
-          cashValue = Number(summary.settledcash.amount);
-        }
-        
-        // Portföy objesi oluştur
-        const portfolio: Portfolio = {
-          totalValue: 0, // Pozisyonlar + nakit üzerinden hesaplanacak
-          cash: cashValue,
-          positions: Array.isArray(positions) ? positions.map((pos: any) => {
-            const symbol = pos.contractDesc || pos.symbol || 'Unknown';
-            
-            // Get metadata from Alpha Vantage
-            const metadata = stockMetadata.get(symbol) || { dividendYield: null, country: null };
-            
-            // Get trade information for this symbol
-            const symbolTrades = tradesBySymbol.get(symbol) || [];
-            
-            // Find most recent purchase date
-            const buyTrades = symbolTrades.filter((t: any) => t.action === 'BUY' || t.action === 'BOT');
-            const mostRecentPurchase = buyTrades.length > 0 ? 
-              buyTrades.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] : null;
-            
-            // Calculate sale percentage
-            const sellTrades = symbolTrades.filter((t: any) => t.action === 'SELL' || t.action === 'SLD');
-            const totalSold = sellTrades.reduce((sum: number, trade: any) => sum + (trade.quantity || 0), 0);
-            const totalBought = buyTrades.reduce((sum: number, trade: any) => sum + (trade.quantity || 0), 0);
-            const salePercentage = totalBought > 0 ? Math.round((totalSold / totalBought) * 100) : 0;
-            
-            // Pozisyon detaylarını çıkar
-            const position: Position = {
-              symbol,
-              name: pos.longName || pos.contractDesc || symbol,
-              quantity: Number(pos.position) || 0,
-              averageCost: Number(pos.avgPrice) || 0,
-              marketValue: Number(pos.mktValue) || 0,
-              unrealizedPnL: Number(pos.unrealizedPnL) || Number(pos.pnl) || Number(pos.profitLoss) || 0,
-              percentChange: 0, // Aşağıda hesaplanacak
-              dividendYield: metadata.dividendYield,
-              purchaseDate: mostRecentPurchase?.date || undefined,
-              salePercentage: salePercentage,
-              country: metadata.country
-            };
-            
-            // Eğer unrealizedPnL 0 ise, manuel hesaplama yap
-            if (!position.unrealizedPnL && position.marketValue && position.averageCost && position.quantity) {
-              position.unrealizedPnL = position.marketValue - (position.averageCost * position.quantity);
-              console.log(`${position.symbol} için kar/zarar hesaplandı: ${position.unrealizedPnL}`);
-            }
-            
-            // Yüzde değişimi hesapla
-            if (position.unrealizedPnL !== 0 && position.marketValue !== 0) {
-              const costBasis = position.marketValue - position.unrealizedPnL;
-              if (costBasis !== 0) {
-                position.percentChange = (position.unrealizedPnL / costBasis) * 100;
-              }
-            }
-            
-            return position;
-          }) : [],
-        };
-        
-        // Toplam değeri hesapla
-        portfolio.totalValue = portfolio.positions.reduce(
-          (sum, pos) => sum + pos.marketValue, 
-          portfolio.cash
-        );
-        
-        console.log('Dönüştürülmüş portföy verisi:', portfolio);
-        return portfolio;
-      }
+    // Extract symbols for getting additional data
+    const symbols = positions.map((pos: any) => pos.contractDesc || pos.symbol).filter(Boolean);
+    
+    // Process trade history to get purchase dates and sold quantities
+    console.log('Processing trade history for purchase dates and sold quantities...');
+    const tradeHistory = await processTradeHistory(positions);
+
+    // Get dividend and country data from Alpha Vantage
+    let stockMetadata = new Map();
+    try {
+      console.log('Alpha Vantage API\'den temettü ve ülke bilgileri alınıyor...');
+      stockMetadata = await alphaVantageAPI.getStockMetadata(symbols);
+      console.log('Alpha Vantage metaveri alındı:', stockMetadata.size, 'hisse için');
+    } catch (error) {
+      console.error('Alpha Vantage API hatası:', error);
+    }
+
+    // Calculate cash value
+    let cashValue = 0;
+    if (summary.totalcashvalue && summary.totalcashvalue.amount) {
+      cashValue = Number(summary.totalcashvalue.amount);
+    } else if (summary.settledcash && summary.settledcash.amount) {
+      cashValue = Number(summary.settledcash.amount);
     }
     
-    // Son çare olarak mock veriye dön
-    console.log('Mock portföy verisine dönülüyor');
-    return mockPortfolio;
+    // Build portfolio object
+    const portfolio: Portfolio = {
+      totalValue: 0, // Will be calculated from positions + cash
+      cash: cashValue,
+      positions: positions.map((pos: any) => {
+        const symbol = pos.contractDesc || pos.symbol || 'Unknown';
+        
+        // Get metadata from Alpha Vantage
+        const metadata = stockMetadata.get(symbol) || { dividendYield: null, country: null };
+        
+        // Get trade information from processed history
+        const tradeInfo = tradeHistory.get(symbol);
+        let purchaseDate = undefined;
+        let salePercentage = undefined;
+
+        if (tradeInfo) {
+          // Use the most recent purchase date (last purchase)
+          purchaseDate = tradeInfo.lastPurchaseDate || tradeInfo.firstPurchaseDate;
+          salePercentage = tradeInfo.salePercentage > 0 ? tradeInfo.salePercentage : undefined;
+          
+          console.log(`${symbol}: Purchase date = ${purchaseDate}, Sale percentage = ${salePercentage}%`);
+        }
+        
+        // Extract position details
+        const position: Position = {
+          symbol,
+          name: pos.longName || pos.contractDesc || symbol,
+          quantity: Number(pos.position) || 0,
+          averageCost: Number(pos.avgPrice) || 0,
+          marketValue: Number(pos.mktValue) || 0,
+          unrealizedPnL: Number(pos.unrealizedPnL) || Number(pos.pnl) || Number(pos.profitLoss) || 0,
+          percentChange: 0, // Will be calculated below
+          dividendYield: metadata.dividendYield,
+          purchaseDate: purchaseDate,
+          salePercentage: salePercentage,
+          country: metadata.country
+        };
+        
+        // Calculate unrealizedPnL if not provided
+        if (!position.unrealizedPnL && position.marketValue && position.averageCost && position.quantity) {
+          position.unrealizedPnL = position.marketValue - (position.averageCost * position.quantity);
+          console.log(`${position.symbol} için kar/zarar hesaplandı: ${position.unrealizedPnL}`);
+        }
+        
+        // Calculate percentage change
+        if (position.unrealizedPnL !== 0 && position.marketValue !== 0) {
+          const costBasis = position.marketValue - position.unrealizedPnL;
+          if (costBasis !== 0) {
+            position.percentChange = (position.unrealizedPnL / costBasis) * 100;
+          }
+        }
+        
+        return position;
+      }),
+    };
+    
+    // Calculate total value
+    portfolio.totalValue = portfolio.positions.reduce(
+      (sum, pos) => sum + pos.marketValue, 
+      portfolio.cash
+    );
+    
+    console.log('Real portfolio data processed successfully:', {
+      totalValue: portfolio.totalValue,
+      cash: portfolio.cash,
+      positionsCount: portfolio.positions.length,
+      positionsWithPurchaseDate: portfolio.positions.filter(p => p.purchaseDate).length,
+      positionsWithSales: portfolio.positions.filter(p => p.salePercentage && p.salePercentage > 0).length
+    });
+    
+    return portfolio;
+    
   } catch (error) {
     console.error('Portföy verisi alınırken hata:', error);
-    return mockPortfolio;
+    throw error; // Don't fall back to mock data, throw the error instead
   }
 };
 
@@ -1377,6 +1370,895 @@ export const getSP500Data = async (period: string = '1m'): Promise<{
   }
 };
 
+// Helper function to test IBKR API endpoints
+export const testIBKREndpoints = async (): Promise<any> => {
+  console.log('Testing IBKR API endpoints based on official documentation...');
+  
+  const endpoints = [
+    // Account and authentication endpoints
+    'iserver/auth/status',
+    'iserver/reauthenticate',
+    'iserver/account',
+    'iserver/accounts',
+    
+    // Portfolio endpoints
+    `portfolio/${IB_ACCOUNT_ID}/summary`,
+    `portfolio/${IB_ACCOUNT_ID}/positions/0`,
+    `portfolio/${IB_ACCOUNT_ID}/allocation`,
+    `portfolio/${IB_ACCOUNT_ID}/ledger`, // Key endpoint for transaction history
+    `portfolio/${IB_ACCOUNT_ID}/meta`,
+    
+    // Trading and order endpoints
+    'iserver/account/orders',
+    'iserver/account/trades', // Key endpoint for trade execution history
+    'iserver/account/activity', // Key endpoint for account activity
+    'iserver/account/pnl/partitioned',
+    'iserver/orders',
+    'iserver/trades',
+    
+    // Additional trade history endpoints
+    'iserver/account/orders/whatif',
+    'iserver/account/trades/history',
+    'iserver/account/summary',
+    
+    // Market data endpoints
+    'iserver/marketdata/snapshot',
+    'iserver/marketdata/history',
+    
+    // Contract and security endpoints
+    'iserver/contract/rules',
+    'iserver/secdef/search',
+    
+    // Additional activity endpoints
+    'iserver/account/performance',
+    'iserver/account/summary/balances'
+  ];
+
+  console.log(`Testing ${endpoints.length} IBKR API endpoints...`);
+  
+  const results: {
+    successful: Array<{
+      endpoint: string;
+      status: number;
+      hasData: boolean;
+      dataKeys: string[];
+    }>;
+    failed: Array<{
+      endpoint: string;
+      status?: number;
+      statusText?: string;
+      error?: string;
+    }>;
+    unauthorized: string[];
+    notFound: string[];
+  } = {
+    successful: [],
+    failed: [],
+    unauthorized: [],
+    notFound: []
+  };
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await apiClient.get('', {
+        params: {
+          target: 'ibgateway',
+          path: endpoint
+        },
+        validateStatus: () => true,
+        timeout: 8000
+      });
+      
+      if (response.status === 200) {
+        const dataPreview = JSON.stringify(response.data).substring(0, 100);
+        console.log(`✓ ${endpoint}: SUCCESS (200) - ${dataPreview}...`);
+        results.successful.push({
+          endpoint,
+          status: response.status,
+          hasData: !!response.data,
+          dataKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : []
+        });
+      } else if (response.status === 401) {
+        console.log(`🔐 ${endpoint}: UNAUTHORIZED (401) - Authentication required`);
+        results.unauthorized.push(endpoint);
+      } else if (response.status === 404) {
+        console.log(`❌ ${endpoint}: NOT FOUND (404) - Endpoint not available`);
+        results.notFound.push(endpoint);
+      } else {
+        console.log(`⚠️ ${endpoint}: ${response.status} - ${response.statusText}`);
+        results.failed.push({ endpoint, status: response.status, statusText: response.statusText });
+      }
+    } catch (error) {
+      console.log(`❌ ${endpoint}: ERROR - ${error}`);
+      results.failed.push({ endpoint, error: String(error) });
+    }
+  }
+  
+  // Summary report
+  console.log('\n📊 IBKR API Endpoint Test Summary:');
+  console.log(`✅ Successful: ${results.successful.length}`);
+  console.log(`❌ Failed: ${results.failed.length}`);
+  console.log(`🔐 Unauthorized: ${results.unauthorized.length}`);
+  console.log(`📭 Not Found: ${results.notFound.length}`);
+  
+  if (results.successful.length > 0) {
+    console.log('\n✅ Working endpoints for trade history:');
+    results.successful.forEach(result => {
+      if (result.endpoint.includes('ledger') || 
+          result.endpoint.includes('trades') || 
+          result.endpoint.includes('activity') ||
+          result.endpoint.includes('orders')) {
+        console.log(`   - ${result.endpoint} (Data keys: ${result.dataKeys.join(', ')})`);
+      }
+    });
+  }
+  
+  if (results.unauthorized.length > 0) {
+    console.log('\n🔐 Endpoints requiring authentication:');
+    results.unauthorized.forEach(endpoint => {
+      console.log(`   - ${endpoint}`);
+    });
+  }
+  
+  return results;
+};
+
+// Get portfolio ledger data for transaction history
+export const getPortfolioLedger = async (): Promise<any> => {
+  try {
+    console.log('📋 Fetching portfolio ledger data from IBKR API...');
+    const response = await apiClient.get('', {
+      params: {
+        target: 'ibgateway',
+        path: `portfolio/${IB_ACCOUNT_ID}/ledger`
+      },
+      validateStatus: () => true,
+    });
+
+    console.log(`📋 Portfolio ledger response: Status ${response.status}`);
+    if (response.status === 200) {
+      console.log('📋 Ledger data type:', typeof response.data);
+      console.log('📋 Ledger data keys:', response.data && typeof response.data === 'object' ? Object.keys(response.data) : 'Not an object');
+      console.log('📋 Full ledger response:', JSON.stringify(response.data, null, 2));
+      return response.data;
+    } else {
+      console.warn(`📋 Portfolio ledger request failed: ${response.status} - ${response.statusText}`);
+      console.warn('📋 Error data:', response.data);
+      return null;
+    }
+  } catch (error) {
+    console.error('📋 Failed to fetch portfolio ledger:', error);
+    return null;
+  }
+};
+
+// Get account trades for execution history
+export const getAccountTrades = async (): Promise<any> => {
+  try {
+    console.log('📈 Fetching account trades data from IBKR API...');
+    const response = await apiClient.get('', {
+      params: {
+        target: 'ibgateway',
+        path: 'iserver/account/trades'
+      },
+      validateStatus: () => true,
+    });
+
+    console.log(`📈 Account trades response: Status ${response.status}`);
+    if (response.status === 200) {
+      console.log('📈 Trades data type:', typeof response.data);
+      console.log('📈 Trades data keys:', response.data && typeof response.data === 'object' ? Object.keys(response.data) : 'Not an object');
+      console.log('📈 Full trades response:', JSON.stringify(response.data, null, 2));
+      return response.data;
+    } else {
+      console.warn(`📈 Account trades request failed: ${response.status} - ${response.statusText}`);
+      console.warn('📈 Error data:', response.data);
+      return null;
+    }
+  } catch (error) {
+    console.error('📈 Failed to fetch account trades:', error);
+    return null;
+  }
+};
+
+// Get portfolio activity for detailed transaction history  
+export const getPortfolioActivity = async (days: number = 30): Promise<any> => {
+  try {
+    console.log(`🎯 Fetching portfolio activity for last ${days} days from IBKR API...`);
+    const response = await apiClient.get('', {
+      params: {
+        target: 'ibgateway',
+        path: `iserver/account/activity?days=${days}`
+      },
+      validateStatus: () => true,
+    });
+
+    console.log(`🎯 Portfolio activity response: Status ${response.status}`);
+    if (response.status === 200) {
+      console.log('🎯 Activity data type:', typeof response.data);
+      console.log('🎯 Activity data keys:', response.data && typeof response.data === 'object' ? Object.keys(response.data) : 'Not an object');
+      console.log('🎯 Full activity response:', JSON.stringify(response.data, null, 2));
+      return response.data;
+    } else {
+      console.warn(`🎯 Portfolio activity request failed: ${response.status} - ${response.statusText}`);
+      console.warn('🎯 Error data:', response.data);
+      return null;
+    }
+  } catch (error) {
+    console.error('🎯 Failed to fetch portfolio activity:', error);
+    return null;
+  }
+};
+
+// Process trade data to get purchase dates and sold quantities - REAL DATA ONLY
+export const processTradeHistory = async (positions: any[]): Promise<Map<string, any>> => {
+  const tradeInfo = new Map();
+  
+  console.log('🔍 Starting REAL trade history processing for positions:', positions.map(p => p.contractDesc || p.symbol));
+  
+  // Initialize trade info for all current positions
+  positions.forEach(pos => {
+    const symbol = pos.contractDesc || pos.symbol || 'Unknown';
+    tradeInfo.set(symbol, {
+      purchases: [],
+      sales: [],
+      firstPurchaseDate: null,
+      lastPurchaseDate: null,
+      totalBought: 0,
+      totalSold: 0,
+      salePercentage: 0
+    });
+  });
+
+  try {
+    // Use the comprehensive real trade history function
+    console.log('📈 Fetching comprehensive real trade history...');
+    const realTradeData = await getRealTradeHistory();
+    
+    if (realTradeData) {
+      console.log('✅ Real trade data found, processing...');
+      
+      // Process the real trade data
+      let processedCount = 0;
+      
+      if (Array.isArray(realTradeData)) {
+        console.log(`📊 Processing ${realTradeData.length} trade records`);
+        
+        realTradeData.forEach((trade: any, index: number) => {
+          if (index < 5) { // Log first 5 for debugging
+            console.log(`📈 Trade ${index}:`, trade);
+          }
+          
+          // Extract symbol from various possible fields
+          const symbol = trade.symbol || 
+                        trade.ticker || 
+                        trade.contractDesc || 
+                        trade.description1 || 
+                        trade.instrument?.symbol ||
+                        trade.contract?.symbol;
+          
+          if (symbol && tradeInfo.has(symbol)) {
+            const info = tradeInfo.get(symbol);
+            
+            // Extract quantity and date
+            const quantity = Math.abs(parseFloat(
+              trade.quantity || 
+              trade.size || 
+              trade.filledQuantity || 
+              trade.totalSize || 
+              trade.position || 
+              0
+            ));
+            
+            const date = trade.executionTime || 
+                        trade.tradeDate || 
+                        trade.date || 
+                        trade.lastExecutionTime ||
+                        trade.timestamp;
+            
+            const price = parseFloat(
+              trade.price || 
+              trade.avgPrice || 
+              trade.tradePrice || 
+              trade.executionPrice || 
+              0
+            );
+            
+            if (quantity > 0 && date) {
+              // Determine if it's a buy or sell
+              const isBuy = trade.side === 'BOT' || 
+                           trade.side === 'BUY' || 
+                           trade.buySell === 'BUY' ||
+                           trade.orderType?.includes('BUY') ||
+                           (trade.quantity && parseFloat(trade.quantity) > 0);
+              
+              const isSell = trade.side === 'SLD' || 
+                            trade.side === 'SELL' || 
+                            trade.buySell === 'SELL' ||
+                            trade.orderType?.includes('SELL') ||
+                            (trade.quantity && parseFloat(trade.quantity) < 0);
+              
+              if (isBuy) {
+                info.purchases.push({
+                  date: date,
+                  quantity: quantity,
+                  price: price
+                });
+                info.totalBought += quantity;
+                processedCount++;
+                
+                if (!info.firstPurchaseDate || new Date(date) < new Date(info.firstPurchaseDate)) {
+                  info.firstPurchaseDate = date;
+                }
+                if (!info.lastPurchaseDate || new Date(date) > new Date(info.lastPurchaseDate)) {
+                  info.lastPurchaseDate = date;
+                }
+                
+                console.log(`✅ ${symbol}: BUY ${quantity} shares on ${date} at $${price}`);
+              } else if (isSell) {
+                info.sales.push({
+                  date: date,
+                  quantity: quantity,
+                  price: price
+                });
+                info.totalSold += quantity;
+                processedCount++;
+                
+                console.log(`✅ ${symbol}: SELL ${quantity} shares on ${date} at $${price}`);
+              }
+            }
+          }
+        });
+      } else if (typeof realTradeData === 'object') {
+        console.log('📊 Processing object-based trade data');
+        
+        // Handle object-based responses (like ledger data)
+        Object.keys(realTradeData).forEach(key => {
+          const data = realTradeData[key];
+          console.log(`📋 Processing ${key}:`, data);
+          
+          // Look for trade-related fields in the object
+          if (data && typeof data === 'object') {
+            // Process any arrays within the object
+            Object.keys(data).forEach(subKey => {
+              if (Array.isArray(data[subKey])) {
+                console.log(`📋 Found array in ${key}.${subKey}:`, data[subKey].length, 'items');
+                // Process this array similar to above
+              }
+            });
+          }
+        });
+      }
+      
+      console.log(`📊 Total trade transactions processed: ${processedCount}`);
+      
+    } else {
+      console.log('❌ No real trade data available from any endpoint');
+    }
+
+    // Calculate sale percentages and log results
+    let symbolsWithData = 0;
+    tradeInfo.forEach((info, symbol) => {
+      if (info.totalBought > 0) {
+        info.salePercentage = Math.round((info.totalSold / info.totalBought) * 100);
+        symbolsWithData++;
+      }
+      
+      // Sort purchases by date to get the most recent
+      if (info.purchases.length > 0) {
+        info.purchases.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      }
+      
+      if (info.totalBought > 0 || info.totalSold > 0 || info.firstPurchaseDate) {
+        console.log(`✅ ${symbol}: Bought=${info.totalBought}, Sold=${info.totalSold}, Sale%=${info.salePercentage}%, First=${info.firstPurchaseDate}, Last=${info.lastPurchaseDate}`);
+      } else {
+        console.log(`❌ ${symbol}: No real trade data found`);
+      }
+    });
+
+    console.log(`📈 Final Summary: ${symbolsWithData} symbols have real trade data out of ${tradeInfo.size} total positions`);
+    
+    if (symbolsWithData === 0) {
+      console.log('⚠️ WARNING: No trade history found for any positions. This might indicate:');
+      console.log('   1. Positions were transferred from another broker');
+      console.log('   2. Trades are older than the API retention period');
+      console.log('   3. Different account was used for trading');
+      console.log('   4. API permissions need to be configured');
+    }
+
+    return tradeInfo;
+
+  } catch (error) {
+    console.error('❌ Error processing real trade history:', error);
+    
+    // Return empty data instead of mock data
+    console.log('❌ Returning empty trade data - no fallback to mock data');
+    return tradeInfo;
+  }
+};
+
+// Debug function to test ledger endpoint specifically
+export const debugLedgerEndpoint = async (): Promise<void> => {
+  console.log('🔍 DEBUGGING LEDGER ENDPOINT SPECIFICALLY...');
+  
+  try {
+    const response = await apiClient.get('', {
+      params: {
+        target: 'ibgateway',
+        path: `portfolio/${IB_ACCOUNT_ID}/ledger`
+      },
+      validateStatus: () => true,
+    });
+
+    console.log('📋 =========================');
+    console.log('📋 LEDGER ENDPOINT ANALYSIS');
+    console.log('📋 =========================');
+    console.log(`📋 Status: ${response.status}`);
+    console.log(`📋 Status Text: ${response.statusText}`);
+    console.log('📋 Headers:', response.headers);
+    
+    if (response.data) {
+      console.log('📋 Data type:', typeof response.data);
+      console.log('📋 Is array:', Array.isArray(response.data));
+      console.log('📋 Data length:', Array.isArray(response.data) ? response.data.length : 'N/A');
+      
+      if (typeof response.data === 'object') {
+        console.log('📋 Object keys:', Object.keys(response.data));
+        
+        // Check for nested arrays
+        Object.keys(response.data).forEach(key => {
+          const value = response.data[key];
+          if (Array.isArray(value)) {
+            console.log(`📋 Found array in "${key}": ${value.length} items`);
+            if (value.length > 0) {
+              console.log(`📋 Sample item from "${key}":`, JSON.stringify(value[0], null, 2));
+            }
+          }
+        });
+      }
+      
+      console.log('📋 FULL RAW RESPONSE:');
+      console.log(JSON.stringify(response.data, null, 2));
+    } else {
+      console.log('📋 ❌ No data in response');
+    }
+    
+  } catch (error) {
+    console.error('📋 ❌ Error in ledger debug:', error);
+  }
+  
+  console.log('📋 =========================');
+};
+
+// Alternative trade endpoints to test
+export const getAlternativeTradeData = async (): Promise<any> => {
+  console.log('🔄 Testing alternative trade endpoints...');
+  
+  const alternativeEndpoints = [
+    // Alternative order endpoints
+    { name: 'Orders (no filters)', path: 'iserver/account/orders' },
+    { name: 'Orders (filled filter)', path: 'iserver/account/orders?filters=filled' },
+    { name: 'Orders (cancelled filter)', path: 'iserver/account/orders?filters=cancelled' },
+    
+    // Alternative position endpoints
+    { name: 'Account Summary', path: 'iserver/account/summary' },
+    { name: 'Positions Summary', path: `portfolio/${IB_ACCOUNT_ID}/positions/0` },
+    { name: 'Position Allocation', path: `portfolio/${IB_ACCOUNT_ID}/allocation` },
+    
+    // Alternative transaction endpoints
+    { name: 'Account Transactions', path: 'iserver/account/transactions' },
+    { name: 'Account History', path: 'iserver/account/history' }, 
+    { name: 'Portfolio Transactions', path: `portfolio/${IB_ACCOUNT_ID}/transactions` },
+    
+    // PnL and performance endpoints
+    { name: 'Account PnL', path: 'iserver/account/pnl/partitioned' },
+    { name: 'Performance', path: 'iserver/account/performance' },
+    
+    // Live orders endpoint
+    { name: 'Live Orders', path: 'iserver/account/orders/live' },
+    
+    // Historical data
+    { name: 'Account Activity (7 days)', path: 'iserver/account/activity?days=7' },
+    { name: 'Account Activity (30 days)', path: 'iserver/account/activity?days=30' },
+  ];
+  
+  const results: any = {};
+  
+  for (const endpoint of alternativeEndpoints) {
+    try {
+      console.log(`🔄 Testing: ${endpoint.name} (${endpoint.path})`);
+      
+      const response = await apiClient.get('', {
+        params: {
+          target: 'ibgateway',
+          path: endpoint.path
+        },
+        validateStatus: () => true,
+        timeout: 8000
+      });
+      
+      results[endpoint.name] = {
+        status: response.status,
+        success: response.status === 200,
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        dataLength: Array.isArray(response.data) ? response.data.length : 'N/A',
+        keys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : [],
+        hasData: !!response.data,
+        sampleData: response.status === 200 && response.data ? 
+          (Array.isArray(response.data) && response.data.length > 0 ? 
+            response.data[0] : 
+            response.data) : null
+      };
+      
+      if (response.status === 200) {
+        console.log(`✅ ${endpoint.name}: SUCCESS`);
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          console.log(`   Sample data:`, JSON.stringify(response.data[0], null, 2));
+        } else if (response.data && typeof response.data === 'object') {
+          console.log(`   Data keys:`, Object.keys(response.data));
+        }
+      } else {
+        console.log(`❌ ${endpoint.name}: ${response.status} - ${response.statusText}`);
+      }
+      
+    } catch (error) {
+      console.log(`❌ ${endpoint.name}: ERROR - ${error}`);
+      results[endpoint.name] = {
+        status: 'ERROR',
+        success: false,
+        error: String(error)
+      };
+    }
+  }
+  
+  console.log('🔄 Alternative endpoint test summary:');
+  Object.entries(results).forEach(([name, result]: [string, any]) => {
+    if (result.success) {
+      console.log(`✅ ${name}: Success (${result.dataLength} items)`);
+    } else {
+      console.log(`❌ ${name}: Failed (${result.status})`);
+    }
+  });
+  
+  return results;
+};
+
+// Try IBKR Web API endpoints for trade history
+export const getIBKRWebTradeHistory = async (): Promise<any> => {
+  console.log('🌐 Trying IBKR Web API endpoints for trade history...');
+  
+  const webEndpoints = [
+    // Web API trade endpoints
+    { name: 'Web Trades', path: 'v1/api/iserver/account/trades' },
+    { name: 'Web Orders', path: 'v1/api/iserver/account/orders' },
+    { name: 'Web Activity', path: 'v1/api/iserver/account/activity' },
+    { name: 'Web Executions', path: 'v1/api/iserver/account/executions' },
+    { name: 'Web Transactions', path: 'v1/api/iserver/account/transactions' },
+    
+    // Alternative paths
+    { name: 'Portfolio Activity', path: `v1/api/portfolio/${IB_ACCOUNT_ID}/activity` },
+    { name: 'Portfolio History', path: `v1/api/portfolio/${IB_ACCOUNT_ID}/history` },
+    { name: 'Portfolio Trades', path: `v1/api/portfolio/${IB_ACCOUNT_ID}/trades` },
+    
+    // FlexWeb API paths
+    { name: 'Flex Trades', path: 'FlexStatementService/FlexStatementService.asmx/GetFlexStatement' },
+    { name: 'Flex Activity', path: 'FlexStatementService/activity' },
+    
+    // Alternative Gateway paths
+    { name: 'Gateway Executions', path: 'iserver/account/executions' },
+    { name: 'Gateway History', path: 'iserver/account/history' },
+    { name: 'Gateway Activity Report', path: 'iserver/account/activity/report' },
+    
+    // Try with different parameters
+    { name: 'Orders with days', path: 'iserver/account/orders?days=30' },
+    { name: 'Trades with days', path: 'iserver/account/trades?days=30' },
+    { name: 'Orders filled recent', path: 'iserver/account/orders?filters=filled&days=365' },
+  ];
+  
+  const results: any = {};
+  
+  for (const endpoint of webEndpoints) {
+    try {
+      console.log(`🌐 Testing: ${endpoint.name} (${endpoint.path})`);
+      
+      const response = await apiClient.get('', {
+        params: {
+          target: 'ibgateway',
+          path: endpoint.path
+        },
+        validateStatus: () => true,
+        timeout: 10000
+      });
+      
+      results[endpoint.name] = {
+        status: response.status,
+        success: response.status === 200,
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        dataLength: Array.isArray(response.data) ? response.data.length : 'N/A',
+        keys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : [],
+        hasData: !!response.data && (Array.isArray(response.data) ? response.data.length > 0 : Object.keys(response.data).length > 0),
+        sampleData: response.status === 200 && response.data ? 
+          (Array.isArray(response.data) && response.data.length > 0 ? 
+            response.data[0] : 
+            response.data) : null
+      };
+      
+      if (response.status === 200) {
+        console.log(`✅ ${endpoint.name}: SUCCESS`);
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+          console.log(`   📊 Found ${response.data.length} items`);
+          console.log(`   📋 Sample:`, JSON.stringify(response.data[0], null, 2));
+        } else if (response.data && typeof response.data === 'object' && Object.keys(response.data).length > 0) {
+          console.log(`   📊 Data keys:`, Object.keys(response.data));
+          console.log(`   📋 Sample:`, JSON.stringify(response.data, null, 2));
+        } else {
+          console.log(`   ⚠️ Empty response`);
+        }
+      } else {
+        console.log(`❌ ${endpoint.name}: ${response.status} - ${response.statusText}`);
+      }
+      
+    } catch (error) {
+      console.log(`❌ ${endpoint.name}: ERROR - ${error}`);
+      results[endpoint.name] = {
+        status: 'ERROR',
+        success: false,
+        error: String(error)
+      };
+    }
+  }
+  
+  console.log('\n🌐 Web API endpoint test summary:');
+  const successfulEndpoints = Object.entries(results).filter(([_, result]: [string, any]) => result.success && result.hasData);
+  const emptyEndpoints = Object.entries(results).filter(([_, result]: [string, any]) => result.success && !result.hasData);
+  const failedEndpoints = Object.entries(results).filter(([_, result]: [string, any]) => !result.success);
+  
+  console.log(`✅ Successful with data: ${successfulEndpoints.length}`);
+  successfulEndpoints.forEach(([name, result]: [string, any]) => {
+    console.log(`   - ${name}: ${result.dataLength} items`);
+  });
+  
+  console.log(`⚠️ Successful but empty: ${emptyEndpoints.length}`);
+  emptyEndpoints.forEach(([name, _]: [string, any]) => {
+    console.log(`   - ${name}: No data`);
+  });
+  
+  console.log(`❌ Failed: ${failedEndpoints.length}`);
+  failedEndpoints.forEach(([name, result]: [string, any]) => {
+    console.log(`   - ${name}: ${result.status}`);
+  });
+  
+  return results;
+};
+
+// Generate mock trade history based on current positions
+export const generateMockTradeHistory = (positions: any[]): Map<string, any> => {
+  console.log('🎭 Generating mock trade history for positions without real data...');
+  
+  const tradeInfo = new Map();
+  
+  positions.forEach(pos => {
+    const symbol = pos.contractDesc || pos.symbol || 'Unknown';
+    
+    // Generate realistic purchase dates based on position size and market conditions
+    const now = new Date();
+    let purchaseDate: Date;
+    let salePercentage = 0;
+    
+    // Larger positions tend to be older purchases
+    const positionValue = pos.mktValue || pos.marketValue || 0;
+    
+    if (positionValue > 100) {
+      // Large positions: 30-180 days ago
+      const daysAgo = Math.floor(Math.random() * 150) + 30;
+      purchaseDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+      
+      // Larger positions more likely to have some sales
+      if (Math.random() < 0.3) {
+        salePercentage = Math.floor(Math.random() * 25) + 5; // 5-30%
+      }
+    } else if (positionValue > 50) {
+      // Medium positions: 7-90 days ago
+      const daysAgo = Math.floor(Math.random() * 83) + 7;
+      purchaseDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+      
+      // Medium positions sometimes have sales
+      if (Math.random() < 0.2) {
+        salePercentage = Math.floor(Math.random() * 20) + 5; // 5-25%
+      }
+    } else {
+      // Small positions: 1-30 days ago (recent buys)
+      const daysAgo = Math.floor(Math.random() * 29) + 1;
+      purchaseDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
+      
+      // Small positions rarely have sales
+      if (Math.random() < 0.1) {
+        salePercentage = Math.floor(Math.random() * 15) + 5; // 5-20%
+      }
+    }
+    
+    // Some positions get "new buy" status (within 24 hours)
+    if (Math.random() < 0.15) { // 15% chance
+      const hoursAgo = Math.floor(Math.random() * 20) + 2; // 2-22 hours ago
+      purchaseDate = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000);
+    }
+    
+    tradeInfo.set(symbol, {
+      purchases: [{
+        date: purchaseDate.toISOString(),
+        quantity: pos.position || pos.quantity || 0,
+        price: pos.avgPrice || pos.averageCost || 0
+      }],
+      sales: salePercentage > 0 ? [{
+        date: new Date(purchaseDate.getTime() + Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+        quantity: ((pos.position || pos.quantity || 0) * salePercentage / 100),
+        price: (pos.avgPrice || pos.averageCost || 0) * (1 + Math.random() * 0.2 - 0.1) // ±10% from avg cost
+      }] : [],
+      firstPurchaseDate: purchaseDate.toISOString(),
+      lastPurchaseDate: purchaseDate.toISOString(),
+      totalBought: pos.position || pos.quantity || 0,
+      totalSold: salePercentage > 0 ? ((pos.position || pos.quantity || 0) * salePercentage / 100) : 0,
+      salePercentage: salePercentage
+    });
+    
+    console.log(`🎭 ${symbol}: Mock purchase ${purchaseDate.toLocaleDateString()}, Sale ${salePercentage}%`);
+  });
+  
+  console.log(`🎭 Generated mock trade history for ${tradeInfo.size} positions`);
+  return tradeInfo;
+};
+
+// Get real trade history with proper parameters
+export const getRealTradeHistory = async (): Promise<any> => {
+  console.log('📈 Fetching REAL trade history from IBKR API...');
+  
+  try {
+    // First ensure we're authenticated
+    const authResponse = await apiClient.get('', {
+      params: {
+        target: 'ibgateway',
+        path: 'iserver/auth/status'
+      },
+      validateStatus: () => true,
+    });
+    
+    console.log('🔐 Auth status:', authResponse.status, authResponse.data);
+    
+    if (authResponse.status !== 200 || !authResponse.data?.authenticated) {
+      console.log('🔐 Not authenticated, attempting reauthentication...');
+      await apiClient.get('', {
+        params: {
+          target: 'ibgateway',
+          path: 'iserver/reauthenticate'
+        }
+      });
+    }
+    
+    // Try multiple trade history endpoints with different time ranges
+    const tradeEndpoints = [
+      // Recent trades (last 30 days)
+      { name: 'Recent Trades (30d)', path: 'iserver/account/trades', params: { days: 30 } },
+      { name: 'Recent Trades (90d)', path: 'iserver/account/trades', params: { days: 90 } },
+      { name: 'Recent Trades (365d)', path: 'iserver/account/trades', params: { days: 365 } },
+      
+      // Orders with execution data
+      { name: 'Filled Orders (30d)', path: 'iserver/account/orders', params: { filters: 'filled', days: 30 } },
+      { name: 'Filled Orders (90d)', path: 'iserver/account/orders', params: { filters: 'filled', days: 90 } },
+      { name: 'Filled Orders (365d)', path: 'iserver/account/orders', params: { filters: 'filled', days: 365 } },
+      
+      // Portfolio specific endpoints
+      { name: 'Portfolio Ledger', path: `portfolio/${IB_ACCOUNT_ID}/ledger`, params: {} },
+      { name: 'Portfolio Summary', path: `portfolio/${IB_ACCOUNT_ID}/summary`, params: {} },
+      
+      // Account activity endpoints
+      { name: 'Account Activity (30d)', path: 'iserver/account/activity', params: { days: 30 } },
+      { name: 'Account Activity (90d)', path: 'iserver/account/activity', params: { days: 90 } },
+      
+      // PnL endpoints (might contain trade info)
+      { name: 'Account PnL', path: 'iserver/account/pnl/partitioned', params: {} },
+      
+      // Try with specific date ranges
+      { name: 'Trades (from date)', path: 'iserver/account/trades', params: { from: '20240101', to: '20241231' } },
+      { name: 'Orders (from date)', path: 'iserver/account/orders', params: { from: '20240101', to: '20241231' } },
+    ];
+    
+    const results: any = {};
+    
+    for (const endpoint of tradeEndpoints) {
+      try {
+        console.log(`📈 Testing: ${endpoint.name}`);
+        
+        // Build query string for parameters
+        let pathWithParams = endpoint.path;
+        if (Object.keys(endpoint.params).length > 0) {
+          const queryParams = new URLSearchParams(endpoint.params as any).toString();
+          pathWithParams = `${endpoint.path}?${queryParams}`;
+        }
+        
+        const response = await apiClient.get('', {
+          params: {
+            target: 'ibgateway',
+            path: pathWithParams
+          },
+          validateStatus: () => true,
+          timeout: 15000
+        });
+        
+        const hasData = response.data && (
+          (Array.isArray(response.data) && response.data.length > 0) ||
+          (typeof response.data === 'object' && Object.keys(response.data).length > 0)
+        );
+        
+        results[endpoint.name] = {
+          status: response.status,
+          success: response.status === 200,
+          hasData: hasData,
+          dataType: typeof response.data,
+          isArray: Array.isArray(response.data),
+          dataLength: Array.isArray(response.data) ? response.data.length : 'N/A',
+          data: response.data
+        };
+        
+        if (response.status === 200) {
+          if (hasData) {
+            console.log(`✅ ${endpoint.name}: SUCCESS with data`);
+            if (Array.isArray(response.data)) {
+              console.log(`   📊 Found ${response.data.length} items`);
+              if (response.data.length > 0) {
+                console.log(`   📋 Sample:`, JSON.stringify(response.data[0], null, 2));
+              }
+            } else {
+              console.log(`   📊 Object with keys:`, Object.keys(response.data));
+              console.log(`   📋 Data:`, JSON.stringify(response.data, null, 2));
+            }
+          } else {
+            console.log(`⚠️ ${endpoint.name}: SUCCESS but empty`);
+          }
+        } else {
+          console.log(`❌ ${endpoint.name}: ${response.status} - ${response.statusText}`);
+        }
+        
+      } catch (error) {
+        console.log(`❌ ${endpoint.name}: ERROR - ${error}`);
+        results[endpoint.name] = {
+          status: 'ERROR',
+          success: false,
+          error: String(error)
+        };
+      }
+    }
+    
+    // Summary
+    const successfulWithData = Object.entries(results).filter(([_, result]: [string, any]) => 
+      result.success && result.hasData
+    );
+    
+    console.log('\n📊 REAL TRADE HISTORY SUMMARY:');
+    console.log(`✅ Endpoints with data: ${successfulWithData.length}`);
+    
+    if (successfulWithData.length > 0) {
+      console.log('\n📈 FOUND TRADE DATA IN:');
+      successfulWithData.forEach(([name, result]: [string, any]) => {
+        console.log(`   - ${name}: ${result.dataLength} items`);
+      });
+      
+      // Return the first successful result with data
+      const [firstSuccessfulName, firstSuccessfulResult] = successfulWithData[0];
+      console.log(`\n🎯 Using data from: ${firstSuccessfulName}`);
+      return (firstSuccessfulResult as any).data;
+    } else {
+      console.log('❌ No trade history data found in any endpoint');
+      return null;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error fetching real trade history:', error);
+    return null;
+  }
+};
+
 export default {
   getPortfolio,
   getTrades,
@@ -1386,4 +2268,13 @@ export default {
   getAllocation,
   getSP500Data,
   getAllOrders,
+  testIBKREndpoints,
+  getPortfolioLedger,
+  getAccountTrades,
+  getPortfolioActivity,
+  processTradeHistory,
+  debugLedgerEndpoint,
+  getAlternativeTradeData,
+  getIBKRWebTradeHistory,
+  getRealTradeHistory,
 }; 
