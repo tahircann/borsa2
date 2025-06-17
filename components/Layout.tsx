@@ -10,18 +10,20 @@ import { FiMenu } from 'react-icons/fi'
 // Create a context for subscription status
 export const SubscriptionContext = React.createContext<{
   isSubscribed: boolean;
-  subscriptionStatus: 'active' | 'inactive' | 'trial';
-  plan: string;
-  subscribe: (planId: string, status?: 'active' | 'inactive' | 'trial') => void;
-  unsubscribe: () => void;
+  subscriptionDetails: any;
   loading: boolean;
+  subscribe: (planId: string) => Promise<{ success: boolean; message: string; transactionId?: string; }>;
+  cancelSubscription: () => { success: boolean; message: string; };
+  checkFeatureAccess: (feature: 'stock-ranks' | 'portfolio' | 'advanced-analytics') => boolean;
+  plans: any[];
 }>({
   isSubscribed: false,
-  subscriptionStatus: 'inactive',
-  plan: 'basic',
-  subscribe: () => {},
-  unsubscribe: () => {},
-  loading: true
+  subscriptionDetails: null,
+  loading: true,
+  subscribe: async () => ({ success: false, message: '' }),
+  cancelSubscription: () => ({ success: false, message: '' }),
+  checkFeatureAccess: () => false,
+  plans: []
 });
 
 type LayoutProps = {

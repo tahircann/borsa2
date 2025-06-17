@@ -1,20 +1,8 @@
 import { useState, useEffect } from 'react'
-import { FiTrendingUp, FiTrendingDown, FiExternalLink, FiSettings } from 'react-icons/fi'
-import { getPortfolio, testIBKREndpoints, debugLedgerEndpoint, getAlternativeTradeData, getIBKRWebTradeHistory, getRealTradeHistory, type Portfolio, type Position } from '@/services/ibapi'
+import { FiTrendingUp, FiTrendingDown, FiExternalLink } from 'react-icons/fi'
+import { getPortfolio, type Portfolio, type Position } from '@/services/ibapi'
 import { formatCurrency, formatPercent } from '../utils/formatters'
-
-// Helper function to check if a stock was purchased within the last 24 hours
-const isNewBuy = (purchaseDate?: string): boolean => {
-  if (!purchaseDate) return false;
-  try {
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const purchaseDateTime = new Date(purchaseDate);
-    return purchaseDateTime > oneDayAgo;
-  } catch (error) {
-    console.error('Error parsing purchase date:', purchaseDate, error);
-    return false;
-  }
-};
+import PremiumGuard from '../components/PremiumGuard'
 
 // Helper function to format purchase date
 const formatPurchaseDate = (purchaseDate?: string): string => {
@@ -48,133 +36,33 @@ export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [dataSource, setDataSource] = useState<string>('unknown')
   const [sortColumn, setSortColumn] = useState('marketValue')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [debugMode, setDebugMode] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false) // Admin mode for editing dates
 
-  const handleDebugTest = async () => {
-    console.log('🔍 Running COMPREHENSIVE REAL DATA debug test...');
-    
-    // First run the specific ledger endpoint debug
-    console.log('\n📋 === LEDGER ENDPOINT ANALYSIS ===');
-    await debugLedgerEndpoint();
-    
-    // Test comprehensive real trade history
-    console.log('\n📈 === COMPREHENSIVE REAL TRADE HISTORY ===');
-    await getRealTradeHistory();
-    
-    // Test alternative trade endpoints
-    console.log('\n🔄 === ALTERNATIVE TRADE ENDPOINTS ===');
-    await getAlternativeTradeData();
-    
-    // Test web API endpoints
-    console.log('\n🌐 === WEB API ENDPOINTS ===');
-    await getIBKRWebTradeHistory();
-    
-    // Then run the general endpoint tests
-    console.log('\n🔍 === GENERAL ENDPOINT TESTS ===');
-    const testResults = await testIBKREndpoints();
-    console.log('Test results:', testResults);
-    
-    // Additional logging for portfolio-specific endpoints
-    if (portfolio) {
-      console.log('\n📊 === CURRENT PORTFOLIO ANALYSIS ===');
-      console.log(`Total positions: ${portfolio.positions.length}`);
-      console.log(`Positions with purchase dates: ${portfolio.positions.filter(p => p.purchaseDate).length}`);
-      console.log(`Positions with sale data: ${portfolio.positions.filter(p => p.salePercentage && p.salePercentage > 0).length}`);
-      
-      portfolio.positions.forEach((position, index) => {
-        console.log(`${index + 1}. ${position.symbol} (${position.name}):`, {
-          quantity: position.quantity,
-          marketValue: position.marketValue,
-          purchaseDate: position.purchaseDate || 'NOT AVAILABLE',
-          salePercentage: position.salePercentage || 'NO SALES',
-          country: position.country || 'Unknown',
-          dividendYield: position.dividendYield || 'No dividend data'
-        });
-      });
-      
-      console.log('\n⚠️ IMPORTANT: If purchase dates show "NOT AVAILABLE", this indicates:');
-      console.log('   1. No trade history found in IBKR API');
-      console.log('   2. Positions may have been transferred from another broker');
-      console.log('   3. Trades may be older than API retention period');
-      console.log('   4. API permissions may need configuration');
-    }
-  };
+  // Check if user is admin (you can implement your own authentication logic)
+  useEffect(() => {
+    // For now, we'll check if user is admin based on local storage or environment
+    // You can replace this with your actual authentication check
+    const adminMode = localStorage.getItem('adminMode') === 'true' || process.env.NODE_ENV === 'development';
+    setIsAdmin(adminMode);
+  }, []);
 
   useEffect(() => {
     const fetchPortfolio = async () => {
       setLoading(true)
       setError(null)
       
-      // Set a timeout for the API call
-      const timeoutId = setTimeout(() => {
-        setError('Portfolio data is taking longer than expected. Please check your IBKR Gateway/TWS connection.')
-      }, 10000);
-      
       try {
-        const result = await Promise.race([
-          getPortfolio(),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Portfolio fetch timeout after 20 seconds')), 20000)
-          )
-        ]) as Portfolio;
-        
-        clearTimeout(timeoutId);
+        const result = await getPortfolio();
         setPortfolio(result)
         setError(null)
-        
-        // Determine data source based on whether we have real API data
-        const hasRealDividendData = result.positions.some(pos => 
-          pos.dividendYield !== undefined && pos.dividendYield !== null && pos.dividendYield > 0
-        );
-        const hasRealCountryData = result.positions.some(pos => 
-          pos.country && pos.country !== 'USA' && pos.country !== 'United States'
-        );
-        const hasRecentPurchases = result.positions.some(pos => 
-          pos.purchaseDate && new Date(pos.purchaseDate) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        );
-        const hasNewBuys = result.positions.some(pos => isNewBuy(pos.purchaseDate));
-        const hasPurchaseDates = result.positions.some(pos => pos.purchaseDate);
-        const hasSaleData = result.positions.some(pos => pos.salePercentage && pos.salePercentage > 0);
-        
-        // Provide more detailed data source information
-        let dataSourceInfo = 'IBKR API Connected';
-        const dataFeatures = [];
-        
-        if (hasRealDividendData) dataFeatures.push('Dividends');
-        if (hasRealCountryData) dataFeatures.push('Country Data');
-        if (hasPurchaseDates) dataFeatures.push('Purchase Dates');
-        if (hasSaleData) dataFeatures.push('Sale Data');
-        if (hasNewBuys) dataFeatures.push('Recent Trades');
-        
-        if (dataFeatures.length > 0) {
-          dataSourceInfo += ` (${dataFeatures.join(', ')})`;
-        }
-        
-        // Add warnings for missing data
-        const missingFeatures = [];
-        if (!hasPurchaseDates) missingFeatures.push('Purchase Dates');
-        if (!hasSaleData) missingFeatures.push('Sale Data');
-        
-        if (missingFeatures.length > 0) {
-          dataSourceInfo += ` - Missing: ${missingFeatures.join(', ')}`;
-        }
-        
-        setDataSource(dataSourceInfo);
-        
       } catch (error) {
-        clearTimeout(timeoutId);
         console.error('Failed to fetch portfolio:', error)
         
         if (error instanceof Error) {
           if (error.message.includes('timeout')) {
             setError('Portfolio data request timed out. Please check your IBKR Gateway/TWS connection and try again.')
-          } else if (error.message.includes('API connection failed')) {
-            setError('IBKR API connection failed. Please ensure IBKR Gateway or TWS is running and accessible.')
-          } else if (error.message.includes('API request failed')) {
-            setError(`IBKR API request failed: ${error.message}. Please check your account settings and API permissions.`)
           } else {
             setError(`Failed to load portfolio data: ${error.message}`)
           }
@@ -182,7 +70,6 @@ export default function PortfolioPage() {
           setError('Failed to load portfolio data. Please check your IBKR Gateway/TWS connection.')
         }
         
-        // Don't set portfolio data in case of error
         setPortfolio(null)
       } finally {
         setLoading(false)
@@ -220,75 +107,56 @@ export default function PortfolioPage() {
       })
     : []
 
+  // Admin functions for editing dates (simplified version)
+  const handleEditPurchaseDate = (symbol: string, newDate: string) => {
+    if (!isAdmin || !portfolio) return;
+    
+    const updatedPositions = portfolio.positions.map(pos => 
+      pos.symbol === symbol ? { ...pos, purchaseDate: newDate } : pos
+    );
+    
+    setPortfolio({ ...portfolio, positions: updatedPositions });
+    // You can add API call here to save the changes
+  };
+
+  const handleEditSoldPercentage = (symbol: string, newPercentage: number) => {
+    if (!isAdmin || !portfolio) return;
+    
+    const updatedPositions = portfolio.positions.map(pos => 
+      pos.symbol === symbol ? { ...pos, salePercentage: newPercentage } : pos
+    );
+    
+    setPortfolio({ ...portfolio, positions: updatedPositions });
+    // You can add API call here to save the changes
+  };
+
   return (
-    <>
+    <PremiumGuard>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Portfolio</h1>
-          <p className="text-sm text-gray-500 mt-1">Data source: {dataSource}</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setDebugMode(!debugMode)}
-            className="flex items-center px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md"
-          >
-            <FiSettings className="w-4 h-4 mr-1" />
-            {debugMode ? 'Hide' : 'Show'} Debug
-          </button>
-          {debugMode && (
-            <button
-              onClick={handleDebugTest}
-              className="px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md"
-            >
-              Test IBKR API
-            </button>
+          {isAdmin && (
+            <p className="text-sm text-orange-600 mt-1">Admin Mode: Purchase dates and sold percentages can be edited</p>
           )}
         </div>
+        {isAdmin && (
+          <button
+            onClick={() => {
+              const newAdminMode = !isAdmin;
+              setIsAdmin(newAdminMode);
+              localStorage.setItem('adminMode', newAdminMode.toString());
+            }}
+            className="px-3 py-2 text-sm bg-orange-500 hover:bg-orange-600 text-white rounded-md"
+          >
+            Toggle Admin Mode
+          </button>
+        )}
       </div>
-
-      {debugMode && portfolio && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-6">
-          <h3 className="font-semibold">Debug Information</h3>
-          <div className="text-sm mt-2 space-y-1">
-            <p><strong>Total Positions:</strong> {portfolio.positions.length}</p>
-            <p><strong>Positions with Purchase Date:</strong> {portfolio.positions.filter(p => p.purchaseDate).length}</p>
-            <p><strong>Positions with Sale Data:</strong> {portfolio.positions.filter(p => p.salePercentage && p.salePercentage > 0).length}</p>
-            <p><strong>Positions with Dividends:</strong> {portfolio.positions.filter(p => p.dividendYield && p.dividendYield > 0).length}</p>
-            <p><strong>Total Portfolio Value:</strong> {formatCurrency(portfolio.totalValue)}</p>
-            <p><strong>Available Cash:</strong> {formatCurrency(portfolio.cash)}</p>
-          </div>
-          
-          {/* Detailed position analysis */}
-          <div className="mt-3">
-            <h4 className="font-medium text-sm mb-2">Position Details:</h4>
-            <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
-              {portfolio.positions.map((pos, idx) => (
-                <div key={pos.symbol} className="flex justify-between">
-                  <span>{pos.symbol}:</span>
-                  <span>
-                    Purchase: {pos.purchaseDate ? new Date(pos.purchaseDate).toLocaleDateString() : 'N/A'}, 
-                    Sold: {pos.salePercentage || 0}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div className="mt-2">
-            <p className="text-xs">
-              📝 Check browser console for detailed API endpoint test results and purchase date analysis.
-            </p>
-          </div>
-        </div>
-      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
           <h3 className="font-semibold">Error Loading Portfolio</h3>
           <p className="text-sm mt-1">{error}</p>
-          <p className="text-xs mt-2">
-            Make sure IBKR Gateway or TWS is running and your API settings are configured correctly.
-          </p>
         </div>
       )}
 
@@ -424,10 +292,13 @@ export default function PortfolioPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                       <div className="flex items-center justify-center">
                         <span className="mr-2">{formatPurchaseDate(position.purchaseDate)}</span>
-                        {isNewBuy(position.purchaseDate) && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            New Buy
-                          </span>
+                        {isAdmin && (
+                          <input
+                            type="date"
+                            value={position.purchaseDate || ''}
+                            onChange={(e) => handleEditPurchaseDate(position.symbol, e.target.value)}
+                            className="border border-gray-300 rounded-md p-1"
+                          />
                         )}
                       </div>
                     </td>
@@ -439,6 +310,14 @@ export default function PortfolioPage() {
                           </span>
                         ) : (
                           <span className="text-gray-400">0%</span>
+                        )}
+                        {isAdmin && (
+                          <input
+                            type="number"
+                            value={position.salePercentage || ''}
+                            onChange={(e) => handleEditSoldPercentage(position.symbol, Number(e.target.value))}
+                            className="border border-gray-300 rounded-md p-1 ml-2"
+                          />
                         )}
                       </div>
                     </td>
@@ -452,6 +331,6 @@ export default function PortfolioPage() {
           </table>
         </div>
       </div>
-    </>
+    </PremiumGuard>
   )
 } 

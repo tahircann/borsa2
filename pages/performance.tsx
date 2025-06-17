@@ -128,19 +128,24 @@ export default function PerformancePage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Portfolio Performance vs S&P 500</h1>
         <div className="flex items-center space-x-2">
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            className="block bg-white border border-gray-300 rounded-md py-2 px-3 text-sm"
-            disabled={loading}
-          >
-            <option value="1w">1 Week</option>
-            <option value="1m">1 Month</option>
-            <option value="3m">3 Months</option>
-            <option value="6m">6 Months</option>
-            <option value="1y">1 Year</option>
-            <option value="all">All Time</option>
-          </select>
+          {['1w', '1m', '3m', '6m', '1y', 'all'].map((timeRange) => (
+            <button
+              key={timeRange}
+              onClick={() => setPeriod(timeRange)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                period === timeRange
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              disabled={loading}
+            >
+              {timeRange === '1w' ? '1W' : 
+               timeRange === '1m' ? '1M' : 
+               timeRange === '3m' ? '3M' : 
+               timeRange === '6m' ? '6M' : 
+               timeRange === '1y' ? '1Y' : 'All'}
+            </button>
+          ))}
           
           <button 
             onClick={regenerateChart}

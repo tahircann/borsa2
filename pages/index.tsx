@@ -12,8 +12,10 @@ import BlurOverlay from '@/components/BlurOverlay'
 import SubscriptionModal from '@/components/SubscriptionModal'
 import Image from 'next/image'
 import Link from 'next/link'
+import { LanguageContext } from './_app'
 
 export default function Home() {
+  const { language } = useContext(LanguageContext);
   const [period, setPeriod] = useState('1m')
   const [performance, setPerformance] = useState<any>(null)
   const [portfolio, setPortfolio] = useState<any>(null)
@@ -87,11 +89,6 @@ export default function Home() {
     return () => window.removeEventListener('error', handleError);
   }, []);
   
-  const handleSubscribe = (planId: string) => {
-    subscribe(planId)
-    setShowSubscriptionModal(false)
-  }
-  
   // Function to render the hero section for unsubscribed users
   const renderHeroSection = () => {
     return (
@@ -144,72 +141,134 @@ export default function Home() {
     return (
       <div className="w-full">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Investment Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-800">
+            {language === 'en' ? 'Investment Dashboard' : 'Yatırım Panosu'}
+          </h1>
           <div className="flex items-center space-x-2">
-            <select 
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="block w-full bg-white border border-gray-300 rounded-lg py-2 px-4 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
-            >
-              <option value="1w">1 Week</option>
-              <option value="1m">1 Month</option>
-              <option value="3m">3 Months</option>
-              <option value="6m">6 Months</option>
-              <option value="1y">1 Year</option>
-              <option value="all">All Time</option>
-            </select>
+            {['1w', '1m', '3m', '6m', '1y', 'all'].map((timeRange) => (
+              <button
+                key={timeRange}
+                onClick={() => setPeriod(timeRange)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  period === timeRange
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {timeRange === '1w' ? '1W' : 
+                 timeRange === '1m' ? '1M' : 
+                 timeRange === '3m' ? '3M' : 
+                 timeRange === '6m' ? '6M' : 
+                 timeRange === '1y' ? '1Y' : (language === 'en' ? 'All' : 'Tümü')}
+              </button>
+            ))}
           </div>
         </div>
 
         {errorMessage && (
           <div className="bg-red-50 text-red-800 p-4 rounded-lg border border-red-200 mb-6">
-            <h2 className="text-lg font-semibold">Error</h2>
+            <h2 className="text-lg font-semibold">
+              {language === 'en' ? 'Error' : 'Hata'}
+            </h2>
             <p className="text-sm">{errorMessage}</p>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Performance Chart */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden">
-              {(!isSubscribed && !subscriptionLoading) && (
-                <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to see your portfolio performance" />
-              )}
-              
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">Performance vs S&P 500</h2>
-                  <p className="text-gray-500">Percentage change over time</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    onClick={() => setPeriod('1m')} 
-                    className={`px-3 py-1 text-sm rounded-md ${period === '1m' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                  >
-                    1M
-                  </button>
-                  <button 
-                    onClick={() => setPeriod('3m')} 
-                    className={`px-3 py-1 text-sm rounded-md ${period === '3m' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                  >
-                    3M
-                  </button>
-                  <button 
-                    onClick={() => setPeriod('1y')} 
-                    className={`px-3 py-1 text-sm rounded-md ${period === '1y' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                  >
-                    1Y
-                  </button>
-                  <button 
-                    onClick={() => setPeriod('all')} 
-                    className={`px-3 py-1 text-sm rounded-md ${period === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                  >
-                    All
-                  </button>
+        {/* Performance Statistics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-6 relative overflow-hidden">
+            {(!isSubscribed && !subscriptionLoading) && (
+              <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to see portfolio performance" />
+            )}
+            <div className="text-sm text-gray-500 mb-1">Portfolio Performance</div>
+            {loading ? (
+              <div className="text-2xl font-semibold">-</div>
+            ) : (
+              <div
+                className={`text-2xl font-semibold flex items-center ${
+                  performance && performance.percentChange >= 0
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}
+              >
+                {performance && performance.percentChange >= 0 ? (
+                  <FiTrendingUp className="w-5 h-5 mr-1" />
+                ) : (
+                  <FiTrendingDown className="w-5 h-5 mr-1" />
+                )}
+                {Math.abs(performance?.percentChange || 0).toFixed(2)}%
+              </div>
+            )}
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 relative overflow-hidden">
+            {(!isSubscribed && !subscriptionLoading) && (
+              <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to see S&P 500 performance" />
+            )}
+            <div className="text-sm text-gray-500 mb-1">S&P 500 Performance</div>
+            {loading ? (
+              <div className="text-2xl font-semibold">-</div>
+            ) : (
+              <div
+                className={`text-2xl font-semibold flex items-center ${
+                  sp500Data && sp500Data.percentChange >= 0
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}
+              >
+                {sp500Data && sp500Data.percentChange >= 0 ? (
+                  <FiTrendingUp className="w-5 h-5 mr-1" />
+                ) : (
+                  <FiTrendingDown className="w-5 h-5 mr-1" />
+                )}
+                {Math.abs(sp500Data?.percentChange || 0).toFixed(2)}%
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Performance Chart */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6 relative overflow-hidden">
+          {(!isSubscribed && !subscriptionLoading) && (
+            <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to see your portfolio performance chart" />
+          )}
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Portfolio Performance vs S&P 500</h1>
+            <div className="flex items-center space-x-2">
+              {['1w', '1m', '3m', '6m', '1y', 'all'].map((timeRange) => (
+                <button
+                  key={timeRange}
+                  onClick={() => setPeriod(timeRange)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    period === timeRange
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  disabled={loading}
+                >
+                  {timeRange === '1w' ? '1W' : 
+                   timeRange === '1m' ? '1M' : 
+                   timeRange === '3m' ? '3M' : 
+                   timeRange === '6m' ? '6M' : 
+                   timeRange === '1y' ? '1Y' : 'All'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="h-80 flex items-center justify-center">
+              <div className="animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                 </div>
               </div>
-              
-              {loading ? (
+            </div>
+          ) : performance && performance.data ? (
+            <div className="h-80">
+              <Suspense fallback={
                 <div className="h-80 flex items-center justify-center">
                   <div className="animate-pulse">
                     <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
@@ -220,39 +279,21 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-              ) : performance && performance.data ? (
-                <>
-                  <div className="h-80">
-                    <Suspense fallback={
-                      <div className="h-80 flex items-center justify-center">
-                        <div className="animate-pulse">
-                          <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
-                          <div className="space-y-3">
-                            <div className="h-4 bg-gray-200 rounded w-full"></div>
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      </div>
-                    }>
-                      <PerformanceChart 
-                        data={performance.data} 
-                        spData={sp500Data?.data || undefined}
-                      />
-                    </Suspense>
-                  </div>
-                </>
-              ) : (
-                <div className="h-80 flex items-center justify-center">
-                  <p>No data available</p>
-                </div>
-              )}
-              
-              <div className="flex justify-between mt-4">
-              </div>
+              }>
+                <PerformanceChart 
+                  data={performance.data} 
+                  spData={sp500Data?.data || undefined}
+                />
+              </Suspense>
             </div>
-          </div>
+          ) : (
+            <div className="h-80 flex items-center justify-center">
+              <p>No data available</p>
+            </div>
+          )}
+        </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Top Holdings from Portfolio */}
           <div className="relative h-full">
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow h-full relative overflow-hidden">
@@ -296,38 +337,38 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Sector Allocation Chart */}
-        <div className="mt-6 relative">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden">
-            {(!isSubscribed && !subscriptionLoading) && (
-              <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to access sector allocation insights" />
-            )}
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Sector Allocation</h2>
-            {loading ? (
-              <div className="h-60 flex items-center justify-center">
-                <p>Loading...</p>
-              </div>
-            ) : allocation && allocation.sector && allocation.sector.length > 0 ? (
-              <div className="h-60">
-                <Suspense fallback={
-                  <div className="h-60 flex items-center justify-center">
-                    <p>Loading...</p>
-                  </div>
-                }>
-                  <AllocationChart 
-                    data={allocation.sector} 
-                    totalValue={allocation.sector.reduce((sum: number, item: any) => sum + item.value, 0)} 
-                    title="Sector" 
-                  />
-                </Suspense>
-              </div>
-            ) : (
-              <div className="h-60 flex items-center justify-center">
-                <p>No sector allocation data available</p>
-              </div>
-            )}
+          {/* Sector Allocation Chart */}
+          <div className="relative h-full">
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow h-full relative overflow-hidden">
+              {(!isSubscribed && !subscriptionLoading) && (
+                <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to access sector allocation insights" />
+              )}
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Sector Allocation</h2>
+              {loading ? (
+                <div className="h-60 flex items-center justify-center">
+                  <p>Loading...</p>
+                </div>
+              ) : allocation && allocation.sector && allocation.sector.length > 0 ? (
+                <div className="h-60">
+                  <Suspense fallback={
+                    <div className="h-60 flex items-center justify-center">
+                      <p>Loading...</p>
+                    </div>
+                  }>
+                    <AllocationChart 
+                      data={allocation.sector} 
+                      totalValue={allocation.sector.reduce((sum: number, item: any) => sum + item.value, 0)} 
+                      title="Sector" 
+                    />
+                  </Suspense>
+                </div>
+              ) : (
+                <div className="h-60 flex items-center justify-center">
+                  <p>No sector allocation data available</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -353,7 +394,6 @@ export default function Home() {
       <SubscriptionModal 
         isOpen={showSubscriptionModal} 
         onClose={() => setShowSubscriptionModal(false)}
-        onSubscribe={handleSubscribe}
       />
     </>
   )

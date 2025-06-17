@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FiInfo, FiFilter, FiRefreshCw, FiTrendingUp, FiTrendingDown, FiBarChart } from 'react-icons/fi';
+import { FiInfo, FiFilter, FiRefreshCw, FiTrendingUp, FiTrendingDown, FiBarChart, FiSettings, FiStar, FiEdit3 } from 'react-icons/fi';
 import { useRouter } from 'next/router';
-import BlurOverlay from '../components/BlurOverlay';
+import PremiumGuard from '../components/PremiumGuard';
 import { useSubscription } from '../utils/subscription';
+import { useAuth } from '../utils/auth';
 import USStockChart from '../components/USStockChart';
 import { alphaVantageAPI, USStockData } from '../services/alphaVantageApi';
 
@@ -16,8 +17,15 @@ export default function StockRanks() {
   const [selectedStock, setSelectedStock] = useState<USStockData | null>(null);
   const [showChart, setShowChart] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [editingStock, setEditingStock] = useState<string | null>(null);
   const router = useRouter();
+  const { isSubscribed } = useSubscription();
+  const { user } = useAuth();
   
+  // Admin kontrolü yeni auth sisteminden
+  const isAdmin = user?.isAdmin || false;
+
   // Fetch US stock data
   useEffect(() => {
     loadStockData();
@@ -52,7 +60,8 @@ export default function StockRanks() {
         stockData = alphaVantageAPI.getMockStockData();
       }
       
-      setStocks(stockData);
+      // İlk 100 veriyi al
+      setStocks(stockData.slice(0, 100));
     } catch (err) {
       console.error('Error loading stock data:', err);
       setError('Failed to load stock data. Please try again later.');
@@ -107,6 +116,54 @@ export default function StockRanks() {
     return value.toLocaleString();
   };
 
+  // Format stock score with color
+  const formatStockScore = (score?: number): JSX.Element => {
+    if (!score) return <span className="text-gray-400">N/A</span>;
+    
+    let colorClass = 'text-yellow-600';
+    if (score >= 80) colorClass = 'text-green-600';
+    else if (score >= 60) colorClass = 'text-blue-600';
+    else if (score < 40) colorClass = 'text-red-600';
+    
+    return (
+      <div className="flex items-center">
+        <FiStar className={`mr-1 h-3 w-3 ${colorClass}`} />
+        <span className={`font-medium ${colorClass}`}>{score}</span>
+        <span className="text-gray-400 text-xs ml-1">/100</span>
+      </div>
+    );
+  };
+
+  // Get valuation color class
+  const getValuationColorClass = (valuation?: string): string => {
+    if (!valuation) return 'text-gray-600';
+    switch (valuation.toLowerCase()) {
+      case 'buy':
+      case 'strong buy':
+        return 'text-green-600';
+      case 'sell':
+      case 'strong sell':
+        return 'text-red-600';
+      case 'overvalued':
+        return 'text-orange-600';
+      case 'undervalued':
+        return 'text-blue-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
+  // Handle admin edit
+  const handleEditStock = (symbol: string, field: string, value: string) => {
+    setStocks(prevStocks => 
+      prevStocks.map(stock => 
+        stock.symbol === symbol 
+          ? { ...stock, [field]: value }
+          : stock
+      )
+    );
+  };
+
   // Sorting logic
   const sortedStocks = [...stocks].sort((a, b) => {
     const aValue = a[sortColumn as keyof USStockData];
@@ -129,7 +186,7 @@ export default function StockRanks() {
   });
 
   return (
-    <BlurOverlay>
+    <PremiumGuard>
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
           <div>
@@ -152,6 +209,15 @@ export default function StockRanks() {
               <FiFilter className="mr-2 h-4 w-4" />
               Filter
             </button>
+            {isAdmin && (
+              <button 
+                onClick={() => setShowAdminPanel(!showAdminPanel)}
+                className="flex items-center bg-blue-50 border border-blue-200 text-blue-700 rounded-md py-2 px-4 text-sm hover:bg-blue-100 transition-colors"
+              >
+                <FiSettings className="mr-2 h-4 w-4" />
+                Admin Panel
+              </button>
+            )}
           </div>
         </div>
 
@@ -179,6 +245,32 @@ export default function StockRanks() {
                   Apply Filters
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Panel */}
+        {showAdminPanel && isAdmin && (
+          <div className="bg-blue-50 rounded-lg shadow-md p-4 mb-6 border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+              <FiSettings className="mr-2" />
+              Admin Panel - Stock Data Management
+            </h3>
+            <div className="text-sm text-blue-700 mb-4">
+              <p>Burada stock verilerini düzenleyebilirsiniz. Düzenlemek istediğiniz hücreye tıklayın.</p>
+              <p className="mt-1">Editlenebilir kolonlar: Stock Score, Quarter Revenue, Annual Revenue, Growth, Valuation, Tech Analysis, Seasonality, Price Target, Upside Potential</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-sm text-gray-600">Admin Mode Active</span>
+              </div>
+              <button 
+                onClick={() => setEditingStock(null)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Cancel All Edits
+              </button>
             </div>
           </div>
         )}
@@ -276,6 +368,87 @@ export default function StockRanks() {
                       <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('stockScore')}
+                  >
+                    Stock Score
+                    {sortColumn === 'stockScore' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('quarterRevenueEarning')}
+                  >
+                    Quarter Revenue
+                    {sortColumn === 'quarterRevenueEarning' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('annualRevenueEarning')}
+                  >
+                    Annual Revenue
+                    {sortColumn === 'annualRevenueEarning' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('growth')}
+                  >
+                    Growth
+                    {sortColumn === 'growth' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('valuation')}
+                  >
+                    Valuation
+                    {sortColumn === 'valuation' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('techAnalysis')}
+                  >
+                    Tech Analysis
+                    {sortColumn === 'techAnalysis' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('seasonality')}
+                  >
+                    Seasonality
+                    {sortColumn === 'seasonality' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('analysisPriceTarget')}
+                  >
+                    Price Target
+                    {sortColumn === 'analysisPriceTarget' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('upsidePotential')}
+                  >
+                    Upside Potential
+                    {sortColumn === 'upsidePotential' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Chart
                   </th>
@@ -284,7 +457,7 @@ export default function StockRanks() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-10 text-center">
+                    <td colSpan={17} className="px-6 py-10 text-center">
                       <div className="flex justify-center items-center">
                         <FiRefreshCw className="animate-spin h-5 w-5 mr-2 text-blue-600" />
                         <span>Loading US stock data...</span>
@@ -293,13 +466,13 @@ export default function StockRanks() {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-10 text-center text-red-600">
+                    <td colSpan={17} className="px-6 py-10 text-center text-red-600">
                       {error}
                     </td>
                   </tr>
                 ) : sortedStocks.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-10 text-center">
+                    <td colSpan={17} className="px-6 py-10 text-center">
                       No stock data available.
                     </td>
                   </tr>
@@ -335,6 +508,155 @@ export default function StockRanks() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                         {stock.pe?.toFixed(1) || 'N/A'}
                       </td>
+                      {/* Yeni kolonlar */}
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {isAdmin ? (
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={stock.stockScore || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'stockScore', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-center"
+                            placeholder="85"
+                          />
+                        ) : (
+                          formatStockScore(stock.stockScore)
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        {isAdmin ? (
+                          <input
+                            type="text"
+                            value={stock.quarterRevenueEarning || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'quarterRevenueEarning', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                            placeholder="Earning"
+                          />
+                        ) : (
+                          stock.quarterRevenueEarning || 'N/A'
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        {isAdmin ? (
+                          <input
+                            type="text"
+                            value={stock.annualRevenueEarning || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'annualRevenueEarning', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                            placeholder="Annual"
+                          />
+                        ) : (
+                          stock.annualRevenueEarning || 'N/A'
+                        )}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm text-center ${getChangeColorClass(parseFloat(stock.growth?.replace('%', '') || '0'))}`}>
+                        {isAdmin ? (
+                          <input
+                            type="text"
+                            value={stock.growth || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'growth', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                            placeholder="+5%"
+                          />
+                        ) : (
+                          stock.growth || 'N/A'
+                        )}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm text-center ${getValuationColorClass(stock.valuation)}`}>
+                        {isAdmin ? (
+                          <select
+                            value={stock.valuation || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'valuation', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select</option>
+                            <option value="Buy">Buy</option>
+                            <option value="Strong Buy">Strong Buy</option>
+                            <option value="Hold">Hold</option>
+                            <option value="Sell">Sell</option>
+                            <option value="Strong Sell">Strong Sell</option>
+                            <option value="Overvalued">Overvalued</option>
+                            <option value="Undervalued">Undervalued</option>
+                            <option value="Fair">Fair</option>
+                          </select>
+                        ) : (
+                          stock.valuation || 'N/A'
+                        )}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm text-center ${getValuationColorClass(stock.techAnalysis)}`}>
+                        {isAdmin ? (
+                          <select
+                            value={stock.techAnalysis || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'techAnalysis', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select</option>
+                            <option value="Strong Buy">Strong Buy</option>
+                            <option value="Buy">Buy</option>
+                            <option value="Bullish">Bullish</option>
+                            <option value="Neutral">Neutral</option>
+                            <option value="Bearish">Bearish</option>
+                            <option value="Sell">Sell</option>
+                            <option value="Volatile">Volatile</option>
+                          </select>
+                        ) : (
+                          stock.techAnalysis || 'N/A'
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                        {isAdmin ? (
+                          <select
+                            value={stock.seasonality || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'seasonality', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select</option>
+                            <option value="Strong">Strong</option>
+                            <option value="Positive">Positive</option>
+                            <option value="Neutral">Neutral</option>
+                            <option value="Negative">Negative</option>
+                            <option value="Weak">Weak</option>
+                          </select>
+                        ) : (
+                          stock.seasonality || 'N/A'
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium">
+                        {isAdmin ? (
+                          <input
+                            type="text"
+                            value={stock.analysisPriceTarget || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'analysisPriceTarget', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                            placeholder="$200"
+                          />
+                        ) : (
+                          stock.analysisPriceTarget || 'N/A'
+                        )}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm text-center font-medium ${getChangeColorClass(parseFloat(stock.upsidePotential?.replace('%', '') || '0'))}`}>
+                        {isAdmin ? (
+                          <input
+                            type="text"
+                            value={stock.upsidePotential || ''}
+                            onChange={(e) => handleEditStock(stock.symbol, 'upsidePotential', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                            placeholder="+10%"
+                          />
+                        ) : (
+                          stock.upsidePotential || 'N/A'
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
                           onClick={(e) => {
@@ -356,10 +678,20 @@ export default function StockRanks() {
         
         <div className="mt-6 flex justify-between items-center">
           <div className="text-sm text-gray-500">
-            Showing {sortedStocks.length} US stocks • Updated every 60 seconds
+            Showing {sortedStocks.length} US stocks (max 100) • Updated every 60 seconds
+            {isAdmin && <span className="ml-2 text-blue-600">• Admin Mode Active</span>}
           </div>
-          <div className="text-xs text-gray-400">
-            Click on any row to view detailed charts and real-time data
+          <div className="flex items-center space-x-4">
+            <div className="text-xs text-gray-400">
+              Click on any row to view detailed charts and real-time data
+              {isAdmin && <span className="ml-2">• Edit cells to modify data</span>}
+            </div>
+            {/* Admin bilgisi */}
+            {isAdmin && (
+              <div className="text-xs text-blue-600 font-medium">
+                Admin Mode: Cells are editable
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -372,6 +704,6 @@ export default function StockRanks() {
           onClose={closeChart}
         />
       )}
-    </BlurOverlay>
+    </PremiumGuard>
   );
 } 

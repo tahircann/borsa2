@@ -62,11 +62,6 @@ export default function Home() {
     return () => window.removeEventListener('error', handleError);
   }, []);
   
-  const handleSubscribe = (planId: string) => {
-    subscribe(planId)
-    setShowSubscriptionModal(false)
-  }
-  
   // Function to render the hero section for unsubscribed users
   const renderHeroSection = () => {
     return (
@@ -121,18 +116,23 @@ export default function Home() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Investment Dashboard</h1>
           <div className="flex items-center space-x-2">
-            <select 
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="block w-full bg-white border border-gray-300 rounded-lg py-2 px-4 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
-            >
-              <option value="1w">1 Week</option>
-              <option value="1m">1 Month</option>
-              <option value="3m">3 Months</option>
-              <option value="6m">6 Months</option>
-              <option value="1y">1 Year</option>
-              <option value="all">All Time</option>
-            </select>
+            {['1w', '1m', '3m', '6m', '1y', 'all'].map((timeRange) => (
+              <button
+                key={timeRange}
+                onClick={() => setPeriod(timeRange)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  period === timeRange
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {timeRange === '1w' ? '1W' : 
+                 timeRange === '1m' ? '1M' : 
+                 timeRange === '3m' ? '3M' : 
+                 timeRange === '6m' ? '6M' : 
+                 timeRange === '1y' ? '1Y' : 'All'}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -387,7 +387,6 @@ export default function Home() {
       <SubscriptionModal 
         isOpen={showSubscriptionModal} 
         onClose={() => setShowSubscriptionModal(false)}
-        onSubscribe={handleSubscribe}
       />
     </>
   )

@@ -29,7 +29,7 @@ export default function BlurOverlay({
     if (onUpgrade) {
       onUpgrade();
     } else {
-      subscribe('premium', 'active');
+      subscribe('premium');
     }
   };
   

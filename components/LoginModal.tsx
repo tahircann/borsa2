@@ -1,34 +1,41 @@
-import { useState } from 'react';
-import { useAuth } from '../utils/auth';
-import { FiX, FiUser, FiLock } from 'react-icons/fi';
+import { useState, useContext } from 'react';
+import { useAuth, LoginCredentials } from '../utils/auth';
+import { FiX, FiUser, FiLock, FiMail } from 'react-icons/fi';
+import { LanguageContext } from '../pages/_app';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSwitchToRegister?: () => void;
 }
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
-  const [username, setUsername] = useState('');
+export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalProps) {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { language } = useContext(LanguageContext);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     
-    const success = login(username, password);
-    if (success) {
-      console.log('Login successful:', { username });
-      
-      setUsername('');
+    const credentials: LoginCredentials = { email, password };
+    const result = login(credentials);
+    
+    setLoading(false);
+    
+    if (result.success) {
+      console.log('Login successful:', result.user);
+      setEmail('');
       setPassword('');
-      
       onClose();
     } else {
-      setError('Invalid username or password');
+      setError(result.message);
     }
   };
 
@@ -42,7 +49,9 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           <FiX className="w-5 h-5" />
         </button>
         
-        <h2 className="text-xl font-bold mb-6 text-center">Admin Login</h2>
+        <h2 className="text-xl font-bold mb-6 text-center">
+          {language === 'en' ? 'Login' : 'Giriş Yap'}
+        </h2>
         
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">
@@ -52,20 +61,20 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="username">
-              Username
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">
+              {language === 'en' ? 'Email' : 'E-posta'}
             </label>
             <div className="flex items-center border rounded-md">
               <div className="px-3 py-2 bg-gray-100 border-r">
-                <FiUser className="text-gray-500" />
+                <FiMail className="text-gray-500" />
               </div>
               <input
-                id="username"
-                type="text"
+                id="email"
+                type="email"
                 className="w-full px-3 py-2 outline-none"
-                placeholder="Enter username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                placeholder={language === 'en' ? 'Enter your email' : 'Email adresinizi girin'}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -73,7 +82,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           
           <div className="mb-6">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="password">
-              Password
+              {language === 'en' ? 'Password' : 'Şifre'}
             </label>
             <div className="flex items-center border rounded-md">
               <div className="px-3 py-2 bg-gray-100 border-r">
@@ -83,7 +92,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 id="password"
                 type="password"
                 className="w-full px-3 py-2 outline-none"
-                placeholder="Enter password"
+                placeholder={language === 'en' ? 'Enter your password' : 'Şifrenizi girin'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -93,13 +102,37 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           
           <button
             type="submit"
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            disabled={loading}
+            className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
           >
-            Login
+            {loading 
+              ? (language === 'en' ? 'Logging in...' : 'Giriş yapılıyor...') 
+              : (language === 'en' ? 'Login' : 'Giriş Yap')
+            }
           </button>
           
+          {onSwitchToRegister && (
+            <div className="text-center mt-4">
+              <p className="text-sm text-gray-600">
+                {language === 'en' ? "Don't have an account? " : 'Hesabınız yok mu? '}
+                <button
+                  type="button"
+                  onClick={onSwitchToRegister}
+                  className="text-primary-600 hover:text-primary-500 font-medium"
+                >
+                  {language === 'en' ? 'Register' : 'Kayıt ol'}
+                </button>
+              </p>
+            </div>
+          )}
+          
           <div className="text-center mt-4 text-sm text-gray-600">
-            <p>Use admin credentials to login (admin/123456)</p>
+            <p>
+              {language === 'en' 
+                ? 'Admin login: admin@borsa.com / 123456'
+                : 'Admin girişi için: admin@borsa.com / 123456'
+              }
+            </p>
           </div>
         </form>
       </div>
