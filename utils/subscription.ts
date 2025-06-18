@@ -88,44 +88,97 @@ export const checkFeatureAccess = (feature: 'stock-ranks' | 'portfolio' | 'advan
   return hasPremiumMembership();
 };
 
-// Mock payment processing
-export const processPayment = async (planId: string, paymentMethod: 'card' | 'paypal' = 'card'): Promise<{
+// Shopier payment processing
+export const processPayment = async (planId: string, paymentMethod: 'shopier' | 'card' = 'shopier'): Promise<{
   success: boolean;
   message: string;
   transactionId?: string;
+  paymentHTML?: string;
 }> => {
-  // Simulate payment processing
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // For demo purposes, randomly succeed or fail
-      const success = Math.random() > 0.1; // 90% success rate
-      
-      if (success) {
-        const membershipType = planId === 'monthly' ? 'monthly' : 'yearly';
-        const updateSuccess = updateMembership(membershipType);
+  if (paymentMethod === 'shopier') {
+    // Shopier ile ödeme
+    const { initiateShopierPayment, openShopierPaymentWindow } = await import('../services/shopierService');
+    const { getUser } = await import('./auth');
+    
+    const user = getUser();
+    if (!user) {
+      return {
+        success: false,
+        message: 'Kullanıcı girişi gerekli'
+      };
+    }
+
+    try {
+      const paymentResult = await initiateShopierPayment({
+        planId: planId as 'monthly' | 'yearly',
+        userEmail: user.email,
+        userName: user.username,
+        userSurname: user.username, // Eğer surname yoksa username kullan
+        userId: user.id
+      });
+
+      if (paymentResult.success && paymentResult.paymentURL) {
+        // Ödeme penceresini aç
+        const paymentOpened = await openShopierPaymentWindow(paymentResult.paymentURL);
         
-        if (updateSuccess) {
-          resolve({
+        if (paymentOpened) {
+          return {
             success: true,
-            message: planId === 'monthly' 
-              ? 'Aylık premium üyeliğiniz başarıyla aktifleştirildi!' 
-              : 'Yıllık premium üyeliğiniz başarıyla aktifleştirildi!',
-            transactionId: `TRX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          });
+            message: 'Ödeme penceresi açıldı. Lütfen ödeme işleminizi tamamlayın.',
+            transactionId: paymentResult.orderId
+          };
+        } else {
+          return {
+            success: false,
+            message: 'Ödeme penceresi açılamadı. Pop-up engelleyicinizi kontrol edin.'
+          };
+        }
+      } else {
+        return {
+          success: false,
+          message: paymentResult.message || 'Ödeme başlatılamadı'
+        };
+      }
+    } catch (error) {
+      console.error('Shopier payment error:', error);
+      return {
+        success: false,
+        message: 'Ödeme işlemi başlatılırken bir hata oluştu'
+      };
+    }
+  } else {
+    // Eski mock payment (fallback)
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const success = Math.random() > 0.1; // 90% success rate
+        
+        if (success) {
+          const membershipType = planId === 'monthly' ? 'monthly' : 'yearly';
+          const updateSuccess = updateMembership(membershipType);
+          
+          if (updateSuccess) {
+            resolve({
+              success: true,
+              message: planId === 'monthly' 
+                ? 'Aylık premium üyeliğiniz başarıyla aktifleştirildi!' 
+                : 'Yıllık premium üyeliğiniz başarıyla aktifleştirildi!',
+              transactionId: `TRX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            });
+          } else {
+            resolve({
+              success: false,
+              message: 'Üyelik güncellenirken bir hata oluştu. Lütfen tekrar deneyin.'
+            });
+          }
         } else {
           resolve({
             success: false,
-            message: 'Üyelik güncellenirken bir hata oluştu. Lütfen tekrar deneyin.'
+            message: 'Ödeme işlemi başarısız. Lütfen kart bilgilerinizi kontrol edip tekrar deneyin.'
           });
         }
-      } else {
-        resolve({
-          success: false,
-          message: 'Ödeme işlemi başarısız. Lütfen kart bilgilerinizi kontrol edip tekrar deneyin.'
-        });
-      }
-    }, 2000); // Simulate 2 second payment processing
-  });
+      }, 2000);
+    });
+  }
 };
 
 // Custom hook for subscription management

@@ -165,60 +165,29 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
           <h4 className="font-semibold mb-3">Ödeme Yöntemi</h4>
           <div className="space-y-2">
             <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-              <input type="radio" name="payment" value="card" defaultChecked className="mr-3" />
+              <input type="radio" name="payment" value="shopier" defaultChecked className="mr-3" />
               <FiCreditCard className="mr-2" />
-              <span>Kredi/Banka Kartı</span>
+              <span>Shopier ile Güvenli Ödeme</span>
             </label>
           </div>
         </div>
         
-        <div className="space-y-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Kart Numarası
-            </label>
-            <input
-              type="text"
-              placeholder="1234 5678 9012 3456"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              maxLength={19}
-            />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center mb-2">
+            <FiCreditCard className="h-5 w-5 text-blue-600 mr-2" />
+            <h4 className="font-semibold text-blue-800">Shopier Güvenli Ödeme</h4>
           </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Son Kullanma
-              </label>
-              <input
-                type="text"
-                placeholder="MM/YY"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                maxLength={5}
-              />
+          <p className="text-blue-700 text-sm">
+            Ödeme işleminiz Shopier'in güvenli altyapısı üzerinden gerçekleştirilecektir. 
+            Kredi kartı, banka kartı ve diğer ödeme seçeneklerini kullanabilirsiniz.
+          </p>
+          <div className="mt-3">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs bg-white px-2 py-1 rounded border">Visa</span>
+              <span className="text-xs bg-white px-2 py-1 rounded border">Mastercard</span>
+              <span className="text-xs bg-white px-2 py-1 rounded border">Troy</span>
+              <span className="text-xs bg-white px-2 py-1 rounded border">3D Secure</span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                CVV
-              </label>
-              <input
-                type="text"
-                placeholder="123"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                maxLength={3}
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Kart Sahibi Adı
-            </label>
-            <input
-              type="text"
-              placeholder="Adınız Soyadınız"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
           </div>
         </div>
         
@@ -240,12 +209,12 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                İşleniyor...
+                Shopier'e Yönlendiriliyor...
               </>
             ) : (
               <>
                 <FiCreditCard className="mr-2 h-4 w-4" />
-                Ödemeyi Tamamla
+                Shopier ile Ödeme Yap
               </>
             )}
           </button>
