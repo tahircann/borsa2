@@ -140,7 +140,7 @@ export default function Navbar({ isAdmin }: NavbarProps) {
             {/* Left side: Logo and Desktop Nav Links */}
             <div className="flex items-center">
               <Link href="/" className="text-2xl font-bold text-slate-800 hover:text-blue-700 transition-colors flex items-center">
-                <span className="text-blue-600 mr-1">Borsa</span> Guide
+                <span className="text-blue-600 mr-1">Esen Global</span> Investment
               </Link>
               <div className="hidden md:ml-10 md:flex md:items-baseline md:space-x-6">
                 {navLinks

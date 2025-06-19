@@ -24,7 +24,7 @@ export interface RegisterCredentials {
 }
 
 // Admin credentials (in a real app, this would be verified server-side)
-const ADMIN_EMAIL = 'admin@borsa.com';
+const ADMIN_EMAIL = 'admin@esenglobal.com';
 const ADMIN_PASSWORD = '123456';
 const ADMIN_USERNAME = 'admin';
 

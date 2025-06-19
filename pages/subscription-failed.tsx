@@ -32,7 +32,7 @@ export default function SubscriptionFailed() {
   return (
     <>
       <Head>
-        <title>Ödeme Başarısız - Borsa22</title>
+        <title>Ödeme Başarısız - Esen Global Investment</title>
         <meta name="description" content="Ödeme işleminiz tamamlanamadı." />
       </Head>
       

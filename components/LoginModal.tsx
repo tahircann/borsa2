@@ -129,8 +129,8 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
           <div className="text-center mt-4 text-sm text-gray-600">
             <p>
               {language === 'en' 
-                ? 'Admin login: admin@borsa.com / 123456'
-                : 'Admin girişi için: admin@borsa.com / 123456'
+                                  ? 'Admin login: admin@esenglobal.com / 123456'
+                  : 'Admin girişi için: admin@esenglobal.com / 123456'
               }
             </p>
           </div>

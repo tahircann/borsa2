@@ -10,7 +10,7 @@ Bu uygulama için kapsamlı bir üyelik sistemi oluşturulmuştur. Sistem ücret
 - **Kullanıcı Kaydı**: Email ve şifre ile hesap oluşturma
 - **Giriş Yapma**: Email/şifre ile giriş
 - **Şifre Güvenliği**: Basit hash algoritması (production ortamında bcrypt kullanılmalı)
-- **Admin Hesabı**: `admin@borsa.com` / `123456`
+- **Admin Hesabı**: `admin@esenglobal.com` / `123456`
 
 ### 💳 Üyelik Türleri
 - **Ücretsiz Üyelik**: Temel özellikler
@@ -162,7 +162,7 @@ const success = renewMembership('userId123', 'yearly');
 ## Test Hesapları
 
 ### Admin Hesabı
-- Email: `admin@borsa.com`
+- Email: `admin@esenglobal.com`
 - Şifre: `123456`
 - Tüm premium özellikler aktif
 

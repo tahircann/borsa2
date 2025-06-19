@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import crypto from 'crypto';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -8,18 +9,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { planId, userEmail, userName, userSurname, userId } = req.body;
 
-    // Shopier Personal Access Token (JWT)
-    const personalAccessToken = process.env.SHOPIER_PERSONAL_ACCESS_TOKEN || process.env.SHOPIER_API_KEY;
+    // Shopier API credentials
+    const apiKey = process.env.SHOPIER_API_KEY;
+    const apiSecret = process.env.SHOPIER_API_SECRET;
     const callbackUrl = process.env.SHOPIER_CALLBACK_URL;
     const successUrl = process.env.SHOPIER_SUCCESS_URL;
     const failUrl = process.env.SHOPIER_FAIL_URL;
 
-    if (!personalAccessToken) {
-      return res.status(500).json({ message: 'Shopier Personal Access Token yapılandırılmamış' });
+    if (!apiKey || !apiSecret) {
+      return res.status(500).json({ message: 'Shopier API bilgileri eksik' });
     }
-
-    // JWT token kullanarak direkt API çağrısı yapacağız
-    // shopier-api paketi yerine direkt REST API kullanımı
 
     // Plan fiyatlarını belirle
     const planPrices = {
@@ -32,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: 'Geçersiz plan ID' });
     }
 
-    // Shopier API ile ödeme sayfası oluşturma
+    // Order data
     const orderData = {
       order_id: `ORDER_${Date.now()}_${userId}`,
       amount: amount,
@@ -54,18 +53,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       success_url: successUrl,
       fail_url: failUrl
     };
-
-    // Shopier form-based payment system kullanıyor, REST API değil
-    // Personal Access Token ile direkt HTML form oluşturacağız
     
     try {
-      // Shopier form parametreleri
+      const randomNr = Math.random().toString(36).substring(7);
+
+      // İmza için veri oluşturma
+      const dataToSign = randomNr + orderData.order_id + orderData.amount.toString() + orderData.currency;
+      const signature = crypto.createHmac('sha256', apiSecret).update(dataToSign).digest('base64');
+
+      // ÇALIŞAN FORMAT: username/password + signature
       const shopierParams: Record<string, string> = {
-        'API_key': personalAccessToken.split('.')[0], // JWT'nin ilk kısmı
-        'website_index': '1',
+        'username': apiKey,
+        'password': apiSecret,
         'platform_order_id': orderData.order_id,
         'product_name': orderData.product_name,
-        'product_type': '0', // 0: Fiziksel ürün, 1: Dijital ürün
+        'product_type': '1', // 1: Dijital ürün
         'buyer_name': userName || '',
         'buyer_surname': userSurname || '',
         'buyer_email': userEmail || '',
@@ -80,11 +82,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'shipping_postcode': orderData.shipping_postcode,
         'total_amount': amount.toString(),
         'currency': orderData.currency,
-        'platform': 'NextJS App',
+        'platform': 'NextJS',
         'callback_url': callbackUrl || '',
         'OK_url': successUrl || '',
         'Fail_url': failUrl || '',
-        'random_nr': Math.random().toString(36).substring(7)
+        'random_nr': randomNr,
+        'signature': signature // OLUŞTURULAN İMZA
       };
 
       // Form URL oluştur
@@ -96,7 +99,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         paymentURL: shopierFormURL,
         amount,
         orderId: orderData.order_id,
-        message: 'Shopier payment URL generated successfully'
+        message: 'Shopier payment URL generated successfully',
+        debug: {
+          params: shopierParams,
+          fullURL: shopierFormURL,
+          note: 'Using working format: username/password with SHA256 signature'
+        }
       });
       
     } catch (error) {

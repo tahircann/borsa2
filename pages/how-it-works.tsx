@@ -7,7 +7,7 @@ export default function HowItWorks() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold mb-2">How It Works?</h1>
         <p className="text-gray-600">
-          Learn how the Borsa22 platform integrates with Interactive Brokers to help you manage your investments.
+          Learn how the Esen Global Investment platform integrates with Interactive Brokers to help you manage your investments.
         </p>
       </div>
 
@@ -20,7 +20,7 @@ export default function HowItWorks() {
             <div>
               <h2 className="text-lg font-semibold mb-2">Real-Time Data</h2>
               <p className="text-gray-600">
-                Borsa22 connects securely to your Interactive Brokers account to provide real-time data about your portfolio, trades, and performance.
+                Esen Global Investment connects securely to your Interactive Brokers account to provide real-time data about your portfolio, trades, and performance.
               </p>
             </div>
           </div>
@@ -83,7 +83,7 @@ export default function HowItWorks() {
             <div className="md:ml-6 mt-3 md:mt-0">
               <h3 className="text-lg font-medium">Create an Account</h3>
               <p className="mt-2 text-gray-600">
-                Sign up for a Borsa22 account using your email address and create a secure password.
+                Sign up for an Esen Global Investment account using your email address and create a secure password.
               </p>
             </div>
           </div>
@@ -95,7 +95,7 @@ export default function HowItWorks() {
             <div className="md:ml-6 mt-3 md:mt-0">
               <h3 className="text-lg font-medium">Connect Your Interactive Brokers Account</h3>
               <p className="mt-2 text-gray-600">
-                Generate an API key in your Interactive Brokers account and enter it in the Borsa22 platform to establish the connection.
+                Generate an API key in your Interactive Brokers account and enter it in the Esen Global Investment platform to establish the connection.
               </p>
             </div>
           </div>
@@ -107,7 +107,7 @@ export default function HowItWorks() {
             <div className="md:ml-6 mt-3 md:mt-0">
               <h3 className="text-lg font-medium">Import and Analyze</h3>
               <p className="mt-2 text-gray-600">
-                Borsa22 automatically imports your portfolio data and begins analyzing it to provide personalized insights.
+                Esen Global Investment automatically imports your portfolio data and begins analyzing it to provide personalized insights.
               </p>
             </div>
           </div>
@@ -138,10 +138,10 @@ export default function HowItWorks() {
           </div>
           
           <div>
-            <h3 className="text-lg font-medium mb-2">Does Borsa22 have access to make trades?</h3>
-            <p className="text-gray-600">
-              No, by default the connection is read-only. Borsa22 can only view your portfolio and trade data but cannot make trades or withdraw funds.
-            </p>
+                          <h3 className="text-lg font-medium mb-2">Does Esen Global Investment have access to make trades?</h3>
+              <p className="text-gray-600">
+                No, by default the connection is read-only. Esen Global Investment can only view your portfolio and trade data but cannot make trades or withdraw funds.
+              </p>
           </div>
           
           <div>
@@ -161,7 +161,7 @@ export default function HowItWorks() {
           <div>
             <h3 className="text-lg font-medium mb-2">Which brokers are supported?</h3>
             <p className="text-gray-600">
-              Currently, Borsa22 supports Interactive Brokers. We're working on adding support for additional brokers in the future.
+                              Currently, Esen Global Investment supports Interactive Brokers. We're working on adding support for additional brokers in the future.
             </p>
           </div>
         </div>

@@ -27,7 +27,7 @@ export default function SubscriptionSuccess() {
   return (
     <>
       <Head>
-        <title>Ödeme Başarılı - Borsa22</title>
+        <title>Ödeme Başarılı - Esen Global Investment</title>
         <meta name="description" content="Premium üyeliğiniz başarıyla aktifleştirildi!" />
       </Head>
       

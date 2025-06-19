@@ -2,6 +2,9 @@ import axios from 'axios';
 import https from 'https';
 import { alphaVantageAPI } from './alphaVantageApi';
 
+// Cache API endpoint'i
+const CACHE_API_URL = '/api/cache';
+
 // Global tipini genişlet
 declare global {
   interface Window {
@@ -329,6 +332,20 @@ const mockPortfolio: Portfolio = {
 
 // Portföy verisi alma
 export const getPortfolio = async (): Promise<Portfolio> => {
+  // Önce cache'den kontrol et
+  try {
+    const cacheResponse = await fetch(`${CACHE_API_URL}?type=portfolio`);
+    if (cacheResponse.ok) {
+      const cachedData = await cacheResponse.json();
+      if (cachedData.data) {
+        console.log('Portfolio verisi cache\'den alındı, son güncelleme:', cachedData.lastUpdate);
+        return cachedData.data;
+      }
+    }
+  } catch (error) {
+    console.log('Cache\'den veri alınamadı, gerçek API\'ye geçiliyor:', error);
+  }
+
   try {
     const isApiConnected = await checkApiConnection();
     
@@ -1054,6 +1071,20 @@ export const getPerformance = async (period: string = '1m'): Promise<{
 };
 
 export const getPositions = async (): Promise<any> => {
+  // Önce cache'den kontrol et
+  try {
+    const cacheResponse = await fetch(`${CACHE_API_URL}?type=positions`);
+    if (cacheResponse.ok) {
+      const cachedData = await cacheResponse.json();
+      if (cachedData.data) {
+        console.log('Positions verisi cache\'den alındı, son güncelleme:', cachedData.lastUpdate);
+        return cachedData.data;
+      }
+    }
+  } catch (error) {
+    console.log('Cache\'den positions verisi alınamadı, gerçek API\'ye geçiliyor:', error);
+  }
+
   try {
     console.log('Fetching positions data from API...');
     // Add timestamp to prevent caching
