@@ -6,7 +6,7 @@ services:
     container_name: ibkr
     ports:
       - "5055:5055"
-      - "5056:5056"
+      - "8080:5056"
     volumes:
       - ./webapp:/app/webapp
       - ./conf.yaml:/root/conf.yaml

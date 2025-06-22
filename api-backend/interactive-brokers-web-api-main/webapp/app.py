@@ -10,11 +10,36 @@ logger = logging.getLogger(__name__)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-BASE_API_URL = "https://localhost:5055/v1/api"
+# Dinamik API URL - host'a göre ayarlanır
+def get_base_api_url(request):
+    host = request.host.split(':')[0]  # Port'u çıkar
+    
+    if host == 'localhost' or host == '127.0.0.1':
+        return "https://localhost:5055/v1/api"
+    else:
+        # Ana uygulama HTTP üzerinde çalışıyorsa, API da HTTP olsun
+        if not request.is_secure:
+            return f"http://{host}:5055/v1/api"
+        else:
+            return f"https://{host}:5055/v1/api"
+
+# Gateway URL'i almak için yardımcı fonksiyon
+def get_gateway_url(request):
+    host = request.host.split(':')[0]  # Port'u çıkar
+    scheme = 'https' if request.is_secure else 'http'
+    
+    if host == 'localhost' or host == '127.0.0.1':
+        return "https://localhost:5055"
+    else:
+        # Ana uygulama HTTP üzerinde çalışıyorsa, gateway da HTTP olsun
+        if not request.is_secure:
+            return f"http://{host}:5055"
+        else:
+            return f"https://{host}:5055"
+
 ACCOUNT_ID = os.environ.get('IBKR_ACCOUNT_ID', '')
 
 logger.info(f"Starting with ACCOUNT_ID: {ACCOUNT_ID}")
-logger.info(f"BASE_API_URL: {BASE_API_URL}")
 
 os.environ['PYTHONHTTPSVERIFY'] = '0'
 
@@ -75,6 +100,7 @@ def format_json(value, indent=None):
 @app.route("/")
 def dashboard():
     try:
+        BASE_API_URL = get_base_api_url(request)
         logger.info("Getting accounts...")
         
         # Güvenli API isteği yap
@@ -83,12 +109,18 @@ def dashboard():
         if error:
             # Yetkilendirme hatası
             if error == "unauthorized":
-                return render_template("auth_required.html", message="Please log in to Interactive Brokers Gateway first.")
+                gateway_url = get_gateway_url(request)
+                return render_template("auth_required.html", 
+                                     message="Please log in to Interactive Brokers Gateway first.",
+                                     gateway_url=gateway_url)
             # Diğer hatalar
             return render_template("error.html", error=f"Failed to get accounts: {error}")
             
         if not accounts:
-            return render_template("auth_required.html", message="No accounts found. Please log in to Interactive Brokers Gateway.")
+            gateway_url = get_gateway_url(request)
+            return render_template("auth_required.html", 
+                                 message="No accounts found. Please log in to Interactive Brokers Gateway.",
+                                 gateway_url=gateway_url)
         
         logger.info(f"Accounts response: {accounts}")
         
@@ -136,6 +168,7 @@ def dashboard():
 
 @app.route("/lookup")
 def lookup():
+    BASE_API_URL = get_base_api_url(request)
     symbol = request.args.get('symbol', None)
     stocks = []
 
@@ -150,6 +183,7 @@ def lookup():
 
 @app.route("/contract/<contract_id>/<period>")
 def contract(contract_id, period='5d', bar='1d'):
+    BASE_API_URL = get_base_api_url(request)
     data = {
         "conids": [
             contract_id
@@ -179,6 +213,7 @@ def contract(contract_id, period='5d', bar='1d'):
 @app.route("/orders")
 def orders():
     try:
+        BASE_API_URL = get_base_api_url(request)
         # Güvenli API isteği
         accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
         
@@ -495,7 +530,10 @@ def scanner():
 # Yetkilendirme sayfası
 @app.route("/auth")
 def auth():
-    return render_template("auth_required.html", message="Please log in to Interactive Brokers Gateway at https://localhost:5055")
+    gateway_url = get_gateway_url(request)
+    return render_template("auth_required.html", 
+                         message="Please log in to Interactive Brokers Gateway first.",
+                         gateway_url=gateway_url)
 
 # Hata sayfası
 @app.route("/error")
