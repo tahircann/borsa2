@@ -980,6 +980,17 @@ const generateMockPerformanceData = (days: number): {
   endValue: number;
   percentChange: number;
 } => {
+  // Use a seed based on current date to generate consistent data for the day
+  const today = new Date().toDateString();
+  const seed = today.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+  
+  // Simple seeded random function for consistent results
+  let seedValue = seed;
+  const seededRandom = () => {
+    seedValue = (seedValue * 9301 + 49297) % 233280;
+    return seedValue / 233280;
+  };
+  
   let value = 100000;
   const data = [];
   const startValue = value;
@@ -988,8 +999,8 @@ const generateMockPerformanceData = (days: number): {
     const date = new Date();
     date.setDate(date.getDate() - (days - i));
     
-    // Random daily change, slightly biased upward
-    const change = (Math.random() * 4) - 1.5;
+    // Use seeded random for consistent daily changes
+    const change = (seededRandom() * 4) - 1.5;
     value = value * (1 + change / 100);
     
     // Calculate return as percentage change from start
@@ -1371,6 +1382,17 @@ const generateMockSP500Data = (days: number): {
   endValue: number;
   percentChange: number;
 } => {
+  // Use a different seed for S&P 500 data (but still consistent per day)
+  const today = new Date().toDateString();
+  const seed = today.split('').reduce((a, b) => a + b.charCodeAt(0), 0) + 1000; // Different seed
+  
+  // Simple seeded random function for consistent results
+  let seedValue = seed;
+  const seededRandom = () => {
+    seedValue = (seedValue * 9301 + 49297) % 233280;
+    return seedValue / 233280;
+  };
+  
   let value = 4500; // Typical S&P 500 index value
   const data = [];
   let baseReturn = 0;
@@ -1379,8 +1401,8 @@ const generateMockSP500Data = (days: number): {
     const date = new Date();
     date.setDate(date.getDate() - (days - i));
     
-    // Random daily change for S&P 500 (generally less volatile than individual portfolios)
-    const change = (Math.random() * 2.5) - 1.0; // ±1% typical daily range
+    // Use seeded random for consistent S&P 500 changes (generally less volatile)
+    const change = (seededRandom() * 2.5) - 1.0; // ±1% typical daily range
     const returnChange = change / 100;
     value = value * (1 + returnChange);
     baseReturn += returnChange;

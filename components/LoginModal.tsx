@@ -34,6 +34,8 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
       setEmail('');
       setPassword('');
       onClose();
+      // Refresh the page to update UI with user data
+      window.location.reload();
     } else {
       setError(result.message);
     }
