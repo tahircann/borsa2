@@ -3,6 +3,8 @@ import { FiTrendingUp, FiTrendingDown, FiExternalLink } from 'react-icons/fi'
 import { getPortfolio, type Portfolio, type Position } from '@/services/ibapi'
 import { formatCurrency, formatPercent } from '../utils/formatters'
 import PremiumGuard from '../components/PremiumGuard'
+import CacheStatus from '../components/CacheStatus'
+import { useAuth } from '../utils/auth'
 
 // Helper function to format purchase date
 const formatPurchaseDate = (purchaseDate?: string): string => {
@@ -39,14 +41,13 @@ export default function PortfolioPage() {
   const [sortColumn, setSortColumn] = useState('marketValue')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [isAdmin, setIsAdmin] = useState(false) // Admin mode for editing dates
+  const { user } = useAuth()
 
-  // Check if user is admin (you can implement your own authentication logic)
+  // Check if user is admin
   useEffect(() => {
-    // For now, we'll check if user is admin based on local storage or environment
-    // You can replace this with your actual authentication check
-    const adminMode = localStorage.getItem('adminMode') === 'true' || process.env.NODE_ENV === 'development';
+    const adminMode = user?.isAdmin || false;
     setIsAdmin(adminMode);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const fetchPortfolio = async () => {
@@ -132,6 +133,8 @@ export default function PortfolioPage() {
 
   return (
     <PremiumGuard>
+      {isAdmin && <CacheStatus />}
+      
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Portfolio</h1>

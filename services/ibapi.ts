@@ -332,18 +332,24 @@ const mockPortfolio: Portfolio = {
 
 // Portföy verisi alma
 export const getPortfolio = async (): Promise<Portfolio> => {
-  // Önce cache'den kontrol et
+  // First try to get from cache
   try {
     const cacheResponse = await fetch(`${CACHE_API_URL}?type=portfolio`);
     if (cacheResponse.ok) {
       const cachedData = await cacheResponse.json();
       if (cachedData.data) {
-        console.log('Portfolio verisi cache\'den alındı, son güncelleme:', cachedData.lastUpdate);
+        console.log('✅ Portfolio data from cache:', {
+          lastUpdate: cachedData.lastUpdate,
+          nextUpdate: cachedData.nextUpdate,
+          status: cachedData.status,
+          positions: cachedData.data.positions?.length || 0,
+          totalValue: cachedData.data.totalValue
+        });
         return cachedData.data;
       }
     }
   } catch (error) {
-    console.log('Cache\'den veri alınamadı, gerçek API\'ye geçiliyor:', error);
+    console.log('⚠️ Cache unavailable, fetching from API:', error);
   }
 
   try {
@@ -1071,18 +1077,22 @@ export const getPerformance = async (period: string = '1m'): Promise<{
 };
 
 export const getPositions = async (): Promise<any> => {
-  // Önce cache'den kontrol et
+  // First try to get from cache
   try {
     const cacheResponse = await fetch(`${CACHE_API_URL}?type=positions`);
     if (cacheResponse.ok) {
       const cachedData = await cacheResponse.json();
       if (cachedData.data) {
-        console.log('Positions verisi cache\'den alındı, son güncelleme:', cachedData.lastUpdate);
+        console.log('✅ Positions data from cache:', {
+          lastUpdate: cachedData.lastUpdate,
+          status: cachedData.status,
+          positionsCount: Array.isArray(cachedData.data) ? cachedData.data.length : 0
+        });
         return cachedData.data;
       }
     }
   } catch (error) {
-    console.log('Cache\'den positions verisi alınamadı, gerçek API\'ye geçiliyor:', error);
+    console.log('⚠️ Cache unavailable, fetching from API:', error);
   }
 
   try {
@@ -1247,8 +1257,25 @@ export const getPositions = async (): Promise<any> => {
 };
 
 export const getAllocation = async (): Promise<AllocationData> => {
+  // First try to get from cache
   try {
-    console.log('Fetching allocation data...');
+    const cacheResponse = await fetch(`${CACHE_API_URL}?type=allocation`);
+    if (cacheResponse.ok) {
+      const cachedData = await cacheResponse.json();
+      if (cachedData.data) {
+        console.log('✅ Allocation data from cache:', {
+          lastUpdate: cachedData.lastUpdate,
+          status: cachedData.status
+        });
+        return cachedData.data;
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ Cache unavailable, fetching from API:', error);
+  }
+
+  try {
+    console.log('Fetching allocation data from API...');
     const response = await apiClient.get('', {
       params: {
         target: 'flask',

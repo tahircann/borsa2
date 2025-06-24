@@ -4,6 +4,7 @@ import Layout from '@/components/Layout'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { useEffect, createContext, useState } from 'react'
 import { initMembershipChecker } from '../utils/membershipChecker'
+import { initializeCacheManager } from '../utils/cacheManager'
 
 export type Language = 'en' | 'tr';
 
@@ -21,9 +22,20 @@ export default function App({ Component, pageProps }: AppProps) {
   const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
-    // Initialize membership checker on app startup
+    // Initialize membership checker and cache manager on app startup
     if (typeof window !== 'undefined') {
       const cleanup = initMembershipChecker();
+      
+      // Initialize cache manager (status checking only, no auto-refresh to avoid conflicts with server-side cron)
+      initializeCacheManager({
+        enableAutoRefresh: false, // Server handles this via cron
+        onStatusChange: (status) => {
+          console.log('📊 Cache status updated:', status);
+        },
+        onRefreshError: (error) => {
+          console.error('❌ Cache refresh error:', error);
+        }
+      });
       
       // Load saved language or default to English
       const savedLanguage = localStorage.getItem('language') as Language;
