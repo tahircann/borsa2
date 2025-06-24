@@ -82,7 +82,7 @@ export default function Positions() {
 
       {!isRealData && !error && (
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded mb-6">
-          Currently showing mock data. Make sure the API server is running at http://localhost:5056.
+          Currently showing mock data. Make sure the API server is running and connected to IB Gateway.
         </div>
       )}
 
