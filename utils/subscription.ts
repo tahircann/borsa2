@@ -117,15 +117,16 @@ export const processPayment = async (planId: string, paymentMethod: 'shopier' | 
         userId: user.id
       });
 
-      if (paymentResult.success && paymentResult.paymentURL) {
+      if (paymentResult.success && paymentResult.paymentHTML) {
         // Ödeme penceresini aç
-        const paymentOpened = await openShopierPaymentWindow(paymentResult.paymentURL);
+        const paymentOpened = await openShopierPaymentWindow(paymentResult.paymentHTML);
         
         if (paymentOpened) {
           return {
             success: true,
             message: 'Ödeme penceresi açıldı. Lütfen ödeme işleminizi tamamlayın.',
-            transactionId: paymentResult.orderId
+            transactionId: paymentResult.orderId,
+            paymentHTML: paymentResult.paymentHTML
           };
         } else {
           return {

@@ -11,9 +11,11 @@ export interface ShopierPaymentRequest {
 export interface ShopierPaymentResponse {
   success: boolean;
   paymentURL?: string;
+  paymentHTML?: string;
   amount?: number;
   orderId?: string;
   message?: string;
+  formParams?: Record<string, string>;
 }
 
 export const initiateShopierPayment = async (paymentData: ShopierPaymentRequest): Promise<ShopierPaymentResponse> => {
@@ -37,15 +39,19 @@ export const initiateShopierPayment = async (paymentData: ShopierPaymentRequest)
   }
 };
 
-export const openShopierPaymentWindow = (paymentURL: string): Promise<boolean> => {
+export const openShopierPaymentWindow = (paymentHTML: string): Promise<boolean> => {
   return new Promise((resolve) => {
-    // Shopier ödeme sayfasını yeni pencerede aç
-    const paymentWindow = window.open(paymentURL, 'shopier_payment', 'width=800,height=600,scrollbars=yes,resizable=yes');
+    // Yeni pencere aç ve HTML'i yaz
+    const paymentWindow = window.open('', 'shopier_payment', 'width=800,height=600,scrollbars=yes,resizable=yes');
     
     if (!paymentWindow) {
       resolve(false);
       return;
     }
+
+    // HTML içeriğini yaz
+    paymentWindow.document.write(paymentHTML);
+    paymentWindow.document.close();
 
     // Pencere kapanışını dinle
     const checkClosed = setInterval(() => {
