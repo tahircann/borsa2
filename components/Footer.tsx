@@ -15,7 +15,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-gray-300 mb-6 max-w-md">
-              Interactive Brokers platformu üzerinden portföy yönetimi, piyasa analizi ve gerçek zamanlı alım-satım takibi hizmetleri sunuyoruz.
+              We provide portfolio management, market analysis, and real-time trading monitoring services through the Interactive Brokers platform.
             </p>
             
             {/* Contact Info */}
@@ -23,8 +23,8 @@ export default function Footer() {
               <div className="flex items-center">
                 <FiMapPin className="h-5 w-5 text-blue-400 mr-3" />
                 <span className="text-gray-300 text-sm">
-                  CUMHURİYET MAH. ATATÜRK BULVARI No:186 /Z01 Kapı No: 05500<br />
-                  SULUOVA/ Amasya / Türkiye
+                  CUMHURİYET MAH. ATATÜRK BULVARI No:186 /Z01 Door No: 05500<br />
+                  SULUOVA/ Amasya / Turkey
                 </span>
               </div>
               <div className="flex items-center">
@@ -38,31 +38,31 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Hızlı Linkler</h3>
+            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/portfolio" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                  Portföy
+                  Portfolio
                 </Link>
               </li>
               <li>
                 <Link href="/stock-ranks" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                  Hisse Sıralaması
+                  Stock Rankings
                 </Link>
               </li>
               <li>
                 <Link href="/performance" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                  Performans
+                  Performance
                 </Link>
               </li>
               <li>
                 <Link href="/about" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                  Hakkımızda
+                  About Us
                 </Link>
               </li>
               <li>
                 <Link href="/how-it-works" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                  Nasıl Çalışır
+                  How It Works
                 </Link>
               </li>
             </ul>
@@ -70,21 +70,21 @@ export default function Footer() {
 
           {/* Legal Pages */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Yasal Belgeler</h3>
+            <h3 className="text-lg font-semibold mb-4">Legal Documents</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/privacy-policy" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                  Gizlilik Politikası
+                  Privacy Policy
                 </Link>
               </li>
               <li>
                 <Link href="/terms-conditions" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                  Kullanım Koşulları
+                  Terms & Conditions
                 </Link>
               </li>
               <li>
                 <Link href="/subscription-terms" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
-                  Abonelik Şartları
+                  Subscription Terms
                 </Link>
               </li>
             </ul>
@@ -95,24 +95,44 @@ export default function Footer() {
         <div className="border-t border-gray-700 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
-              © 2024 Esen Global Investment. Tüm hakları saklıdır.
+              © 2025 Esen Global Investment. All rights reserved.
             </div>
             
-            {/* Payment and Security Badges */}
+            {/* Payment Methods */}
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-xs text-gray-400">
-                <span>🔒 SSL Güvenli</span>
-                <span>•</span>
-                <span>💳 Güvenli Ödeme</span>
+              <div className="flex items-center space-x-3">
+                <span className="text-xs text-gray-400">Accepted Payments:</span>
+                <div className="flex items-center space-x-2">
+                  {/* Visa Logo */}
+                  <div className="bg-white px-2 py-1 rounded text-blue-900 font-bold text-xs">
+                    VISA
+                  </div>
+                  {/* Mastercard Logo */}
+                  <div className="bg-white px-2 py-1 rounded text-red-600 font-bold text-xs">
+                    MC
+                  </div>
+                  {/* Iyzico Logo */}
+                  <div className="bg-blue-500 px-2 py-1 rounded text-white font-bold text-xs">
+                    iyzico
+                  </div>
+                </div>
               </div>
+            </div>
+          </div>
+          
+          <div className="flex flex-col md:flex-row justify-between items-center mt-4">
+            <div className="flex items-center space-x-4 text-xs text-gray-400 mb-2 md:mb-0">
+              <span>🔒 SSL Secure</span>
+              <span>•</span>
+              <span>💳 Secure Payment</span>
             </div>
           </div>
           
           {/* Legal Footer Text */}
           <div className="mt-4 text-xs text-gray-500 text-center">
             <p>
-              Bu platformda sunulan bilgiler yalnızca eğitim ve bilgi amaçlıdır, yatırım tavsiyesi niteliği taşımaz. 
-              Geçmiş performans gelecekteki sonuçları garanti etmez. Yatırım kararlarınızdan tamamen sorumlusunuz.
+              The information provided on this platform is for educational and informational purposes only and does not constitute investment advice. 
+              Past performance does not guarantee future results. You are fully responsible for your investment decisions.
             </p>
           </div>
         </div>
