@@ -1,5 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { FiMail, FiMapPin, FiPhone } from 'react-icons/fi'
 
 export default function Footer() {
@@ -102,19 +103,10 @@ export default function Footer() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
                 <span className="text-xs text-gray-400">Accepted Payments:</span>
-                <div className="flex items-center space-x-2">
-                  {/* Visa Logo */}
-                  <div className="bg-white px-2 py-1 rounded text-blue-900 font-bold text-xs">
-                    VISA
-                  </div>
-                  {/* Mastercard Logo */}
-                  <div className="bg-white px-2 py-1 rounded text-red-600 font-bold text-xs">
-                    MC
-                  </div>
-                  {/* Iyzico Logo */}
-                  <div className="bg-blue-500 px-2 py-1 rounded text-white font-bold text-xs">
-                    iyzico
-                  </div>
+                <div className="flex items-center space-x-4">
+                  <Image src="/assets/visa.png" alt="Visa" width={40} height={25} style={{ objectFit: 'contain' }} />
+                  <Image src="/assets/mastercard.png" alt="Mastercard" width={40} height={25} style={{ objectFit: 'contain' }} />
+                  <Image src="/assets/iyzico.png" alt="Iyzico" width={40} height={25} style={{ objectFit: 'contain' }} />
                 </div>
               </div>
             </div>
