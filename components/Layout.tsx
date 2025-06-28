@@ -2,6 +2,7 @@ import React, { ReactNode, useState, useEffect } from 'react'
 import Head from 'next/head'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
+import Footer from './Footer'
 import Script from 'next/script'
 import { useSubscription } from '../utils/subscription'
 import { useAuth } from '../utils/auth'
@@ -85,11 +86,12 @@ export default function Layout({ children }: LayoutProps) {
               <Sidebar onClose={toggleSidebar} />
             </div>
           )}
-          <div className="flex-1">
+          <div className="flex-1 flex flex-col min-h-screen">
             <Navbar isAdmin={isAdmin} />
-            <main className="container mx-auto px-4 py-6">
+            <main className="container mx-auto px-4 py-6 flex-1">
               {children}
             </main>
+            <Footer />
           </div>
         </div>
       </SubscriptionContext.Provider>

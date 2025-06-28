@@ -83,7 +83,7 @@ export default function Navbar({ isAdmin }: NavbarProps) {
       authRequired: true  // Only show when logged in
     },
     { 
-      href: '/how-it-works', 
+      href: '/about', 
       label: language === 'en' ? 'About' : 'Hakkında', 
       premium: false 
     },
