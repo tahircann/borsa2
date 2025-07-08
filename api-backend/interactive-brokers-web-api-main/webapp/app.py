@@ -660,14 +660,20 @@ def generate_mock_performance_data(period, current_value):
     
     # Determine number of days based on period
     days = 30
-    match period:
-        case '1d': days = 1
-        case '1w': days = 7
-        case '1m': days = 30
-        case '3m': days = 90
-        case '6m': days = 180
-        case '1y': days = 365
-        case 'all': days = 730
+    if period == '1d':
+        days = 1
+    elif period == '1w':
+        days = 7  
+    elif period == '1m':
+        days = 30
+    elif period == '3m':
+        days = 90
+    elif period == '6m':
+        days = 180
+    elif period == '1y':
+        days = 365
+    elif period == 'all':
+        days = 730
     
     # Create sample portfolio growth
     start_value = current_value * 0.9  # 10% less than current
