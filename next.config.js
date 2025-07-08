@@ -10,7 +10,7 @@ const nextConfig = {
     return [
       {
         source: '/ibapi/:path*',
-        destination: 'https://localhost:5056/v1/api/:path*',
+        destination: 'https://localhost:5055/v1/api/:path*',
         basePath: false
       },
     ]
@@ -22,5 +22,5 @@ const nextConfig = {
   },
 }
 
-console.log('Next.js config loaded with API proxy to: https://localhost:5056/v1/api');
+console.log('Next.js config loaded with API proxy to: https://localhost:5055/v1/api');
 module.exports = nextConfig 
