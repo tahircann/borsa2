@@ -8,12 +8,9 @@ const nextConfig = {
   async rewrites() {
     console.log('Setting up API proxy rewrites');
     
-    // For production deployment on server, use Docker network
-    // For local development, use SSH tunnel
-    const isProduction = process.env.NODE_ENV === 'production';
-    const apiDestination = isProduction 
-      ? 'http://172.18.0.2:5056/:path*'  // Docker container internal IP
-      : 'http://localhost:8080/:path*';   // SSH tunnel for local dev
+    // Both development and production use localhost:8080
+    // Development: SSH tunnel, Production: Docker external port mapping
+    const apiDestination = 'http://localhost:8080/:path*';
     
     console.log('API destination:', apiDestination);
     
@@ -32,11 +29,6 @@ const nextConfig = {
   },
 }
 
-const isProduction = process.env.NODE_ENV === 'production';
-const apiUrl = isProduction 
-  ? 'http://172.18.0.2:5056' 
-  : 'http://localhost:8080';
-
 console.log(`Next.js config loaded - Environment: ${process.env.NODE_ENV || 'development'}`);
-console.log(`API proxy configured for: ${apiUrl}`);
+console.log(`API proxy configured for: http://localhost:8080`);
 module.exports = nextConfig 
