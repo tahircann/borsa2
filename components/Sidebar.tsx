@@ -11,6 +11,7 @@ import {
   FiX,
   FiBriefcase,
   FiUser,
+  FiUsers,
   FiLock,
   FiCreditCard,
   FiSettings,
@@ -18,7 +19,8 @@ import {
   FiShield,
   FiClock,
   FiChevronDown,
-  FiChevronRight
+  FiChevronRight,
+  FiDollarSign
 } from 'react-icons/fi'
 import { useAuth } from '../utils/auth'
 
@@ -65,6 +67,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     { name: 'ADMIN', href: '#', icon: <FiSettings className="h-5 w-5" />, isHeader: true, adminOnly: true },
     { name: 'Stock Ranks', href: '/stock-ranks', icon: <FiBarChart className="h-5 w-5" />, adminOnly: true },
     { name: 'Portfolio Stock Ranks', href: '/portfolio-stock-ranks', icon: <FiBarChart2 className="h-5 w-5" />, adminOnly: true },
+    
+    // Admin User Management
+    { 
+      name: 'USER MANAGEMENT', 
+      href: '#', 
+      icon: <FiUsers className="h-5 w-5" />, 
+      isHeader: true,
+      adminOnly: true,
+      children: [
+        { name: 'All Users', href: '/admin/users', icon: <FiUsers className="h-4 w-4" />, adminOnly: true },
+        { name: 'Subscription Management', href: '/admin/subscriptions', icon: <FiCreditCard className="h-4 w-4" />, adminOnly: true },
+        { name: 'Payment Analytics', href: '/admin/payments', icon: <FiDollarSign className="h-4 w-4" />, adminOnly: true },
+        { name: 'User Security', href: '/admin/security', icon: <FiShield className="h-4 w-4" />, adminOnly: true },
+        { name: 'System Notifications', href: '/admin/notifications', icon: <FiMail className="h-4 w-4" />, adminOnly: true }
+      ]
+    },
     
     // Account Management
     { 
