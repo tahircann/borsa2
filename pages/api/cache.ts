@@ -63,7 +63,7 @@ const fetchFreshData = async (): Promise<any> => {
     if (typeof positionsRes.data === 'string' && positionsRes.data.includes('<html>')) {
       console.error('❌ Received HTML instead of JSON from positions API');
     }
-    if (typeof allocationRes.data === 'string' && allocationRes.data.includes('<html>')) {
+    if (typeof allocationRes.data === 'string' && allocationRes.data.includes('<html>')) { 
       console.error('❌ Received HTML instead of JSON from allocation API');
     }
     
