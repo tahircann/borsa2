@@ -1015,6 +1015,8 @@ def portfolio_allocation():
 def api_allocation():
     """JSON API endpoint for allocation data"""
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Get accounts
         accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
         
