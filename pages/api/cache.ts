@@ -68,16 +68,16 @@ const fetchFreshData = async (): Promise<any> => {
       }
 
       // Process positions
-      const positions = Array.isArray(data.positions) ? data.positions.filter((pos: any) => pos.position !== 0).map((pos: any) => ({
-        symbol: pos.description || pos.contractDesc || pos.symbol || 'Unknown',
-        name: pos.description || pos.longName || pos.contractDesc || pos.symbol || 'Unknown',
+      const positions = Array.isArray(data.positions) ? data.positions.map((pos: any) => ({
+        symbol: pos.description || 'Unknown',
+        name: pos.description || 'Unknown', 
         quantity: Number(pos.position) || 0,
-        averageCost: Number(pos.avgPrice) || Number(pos.avgCost) || 0,
-        marketValue: Number(pos.marketValue) || Number(pos.mktValue) || (Number(pos.position) * Number(pos.marketPrice)) || 0,
-        unrealizedPnL: Number(pos.unrealizedPnl) || Number(pos.unrealizedPnL) || Number(pos.pnl) || 0,
-        percentChange: 0, // Will be calculated
-        country: 'US' // Default
-      })) : [];
+        averageCost: Number(pos.avgCost) || 0,
+        marketValue: Number(pos.marketValue) || 0,
+        unrealizedPnL: Number(pos.unrealizedPnl) || 0,
+        percentChange: 0,
+        country: 'US'
+      })).filter((pos: any) => pos.marketValue !== 0) : [];
 
       // Calculate percentage changes
       positions.forEach((position: any) => {
