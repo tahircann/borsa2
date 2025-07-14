@@ -5,10 +5,10 @@ import https from 'https';
 // Hedef API'ler - environment based
 const isProduction = process.env.NODE_ENV === 'production';
 const FLASK_API_URL = isProduction 
-  ? 'http://172.18.0.2:5056'      // Docker container internal IP (production)
+  ? 'http://localhost:8080'       // Docker mapped to external port 8080 (production)
   : 'http://localhost:8080';      // SSH tunnel (local development)
 const IB_GATEWAY_URL = isProduction
-  ? 'https://172.18.0.2:5055/v1/api'  // Docker container internal IP (production)
+  ? 'https://localhost:5055/v1/api'  // Docker mapped to external port 5055 (production)
   : 'https://localhost:5055/v1/api';  // SSH tunnel (local development)
 
 // Güvenli olmayan HTTPS istemcisi oluştur
