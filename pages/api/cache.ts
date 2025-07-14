@@ -68,13 +68,13 @@ const fetchFreshData = async (): Promise<any> => {
       }
 
       // Process positions
-      const positions = Array.isArray(data.positions) ? data.positions.map((pos: any) => ({
-        symbol: pos.contractDesc || pos.symbol || 'Unknown',
-        name: pos.longName || pos.contractDesc || pos.symbol || 'Unknown',
+      const positions = Array.isArray(data.positions) ? data.positions.filter((pos: any) => pos.position !== 0).map((pos: any) => ({
+        symbol: pos.description || pos.contractDesc || pos.symbol || 'Unknown',
+        name: pos.description || pos.longName || pos.contractDesc || pos.symbol || 'Unknown',
         quantity: Number(pos.position) || 0,
-        averageCost: Number(pos.avgPrice) || 0,
-        marketValue: Number(pos.mktValue) || 0,
-        unrealizedPnL: Number(pos.unrealizedPnL) || Number(pos.pnl) || 0,
+        averageCost: Number(pos.avgPrice) || Number(pos.avgCost) || 0,
+        marketValue: Number(pos.marketValue) || Number(pos.mktValue) || (Number(pos.position) * Number(pos.marketPrice)) || 0,
+        unrealizedPnL: Number(pos.unrealizedPnl) || Number(pos.unrealizedPnL) || Number(pos.pnl) || 0,
         percentChange: 0, // Will be calculated
         country: 'US' // Default
       })) : [];
@@ -98,6 +98,10 @@ const fetchFreshData = async (): Promise<any> => {
 
     console.log('✅ Fresh data fetched successfully');
     console.log(`📊 Portfolio: ${portfolio.positions.length} positions, Total: $${portfolio.totalValue.toFixed(2)}`);
+    console.log(`💰 Cash: $${portfolio.cash.toFixed(2)}`);
+    console.log(`📈 Sample position:`, portfolio.positions[0] || 'No positions');
+    console.log(`🎯 Allocation sectors:`, data.allocation?.sector?.length || 0);
+    console.log(`🏭 Allocation industries:`, data.allocation?.industry?.length || 0);
     
     return data;
   } catch (error) {
