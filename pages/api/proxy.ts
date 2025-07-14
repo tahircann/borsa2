@@ -3,7 +3,7 @@ import axios from 'axios';
 import https from 'https';
 
 // Hedef API'ler
-const FLASK_API_URL = 'http://localhost:5056';
+const FLASK_API_URL = 'http://localhost:8080';
 const IB_GATEWAY_URL = 'https://localhost:5055/v1/api';
 
 // Güvenli olmayan HTTPS istemcisi oluştur
