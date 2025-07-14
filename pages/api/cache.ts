@@ -40,9 +40,9 @@ const fetchFreshData = async (): Promise<any> => {
   try {
     // Fetch all data in parallel with longer timeout
     const [summaryRes, positionsRes, allocationRes] = await Promise.all([
-      axios.get(`${baseUrl}/api/summary`, { timeout: 30000 }),
-      axios.get(`${baseUrl}/api/positions`, { timeout: 30000 }),
-      axios.get(`${baseUrl}/api/allocation`, { timeout: 30000 })
+      axios.get(`${baseUrl}/summary`, { timeout: 30000 }),
+      axios.get(`${baseUrl}/positions`, { timeout: 30000 }),
+      axios.get(`${baseUrl}/allocation`, { timeout: 30000 })
     ]);
 
     const data: any = {
