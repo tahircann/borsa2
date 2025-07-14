@@ -317,7 +317,9 @@ export default function Home() {
                           <div className="text-sm text-gray-500">{position.name}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-medium text-gray-800">{position.marketValue.toFixed(2)} pts</div>
+                          <div className="font-medium text-gray-800">
+                            {((position.marketValue / portfolio.totalValue) * 100).toFixed(1)}%
+                          </div>
                           <div className={`text-sm ${position.percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}
                           >
                             {position.percentChange >= 0 ? 

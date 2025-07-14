@@ -51,6 +51,22 @@ const fetchFreshData = async (): Promise<any> => {
       allocation: allocationRes.data
     };
 
+    // Debug: Log the type of data we received
+    console.log('🔍 Summary data type:', typeof summaryRes.data, summaryRes.data?.constructor?.name);
+    console.log('🔍 Positions data type:', typeof positionsRes.data, positionsRes.data?.constructor?.name);
+    console.log('🔍 Allocation data type:', typeof allocationRes.data, allocationRes.data?.constructor?.name);
+    
+    // Check if we got HTML instead of JSON
+    if (typeof summaryRes.data === 'string' && summaryRes.data.includes('<html>')) {
+      console.error('❌ Received HTML instead of JSON from summary API');
+    }
+    if (typeof positionsRes.data === 'string' && positionsRes.data.includes('<html>')) {
+      console.error('❌ Received HTML instead of JSON from positions API');
+    }
+    if (typeof allocationRes.data === 'string' && allocationRes.data.includes('<html>')) {
+      console.error('❌ Received HTML instead of JSON from allocation API');
+    }
+    
     // Process portfolio data from positions and summary
     const portfolio: any = {
       totalValue: 0,
@@ -94,12 +110,29 @@ const fetchFreshData = async (): Promise<any> => {
       portfolio.totalValue = positions.reduce((sum: number, pos: any) => sum + pos.marketValue, cashValue);
     }
 
+    // Filter out cash from allocation data to show only stock allocations
+    if (data.allocation) {
+      if (data.allocation.sector) {
+        data.allocation.sector = data.allocation.sector.filter((item: any) => 
+          item.name && item.name.toLowerCase() !== 'cash'
+        );
+      }
+      if (data.allocation.industry) {
+        data.allocation.industry = data.allocation.industry.filter((item: any) => 
+          item.name && item.name.toLowerCase() !== 'cash'
+        );
+      }
+      if (data.allocation.assetClass) {
+        data.allocation.assetClass = data.allocation.assetClass.filter((item: any) => 
+          item.name && item.name.toLowerCase() !== 'cash'
+        );
+      }
+    }
+
     data.portfolio = portfolio;
 
     console.log('✅ Fresh data fetched successfully');
-    console.log(`📊 Portfolio: ${portfolio.positions.length} positions, Total: $${portfolio.totalValue.toFixed(2)}`);
-    console.log(`💰 Cash: $${portfolio.cash.toFixed(2)}`);
-    console.log(`📈 Sample position:`, portfolio.positions[0] || 'No positions');
+    console.log(`� Portfolio: ${portfolio.positions.length} positions`);
     console.log(`🎯 Allocation sectors:`, data.allocation?.sector?.length || 0);
     console.log(`🏭 Allocation industries:`, data.allocation?.industry?.length || 0);
     
@@ -255,4 +288,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       message: error instanceof Error ? error.message : 'Cache operation failed'
     });
   }
-} 
+}
