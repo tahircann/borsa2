@@ -1103,6 +1103,72 @@ def api_allocation():
         logger.exception("Error in API allocation route")
         return jsonify({"error": f"Error retrieving portfolio allocation: {str(e)}"}), 500
 
+@app.route("/api/summary")
+def api_summary():
+    """JSON API endpoint for account summary data"""
+    try:
+        BASE_API_URL = get_base_api_url(request)
+        
+        # Get accounts
+        accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
+        
+        if error:
+            return jsonify({"error": f"Failed to get accounts: {error}"}), 500
+        
+        if not accounts:
+            return jsonify({"error": "No accounts found"}), 404
+        
+        # Try the second account if available, otherwise use the first one
+        account = accounts[1] if len(accounts) > 1 else accounts[0]
+        account_id = account["id"]
+        
+        # Fetch account summary from IBKR API
+        summary_data, error = safe_api_request(f"{BASE_API_URL}/portfolio/{account_id}/summary")
+        
+        if error:
+            return jsonify({"error": f"Failed to get summary data: {error}"}), 500
+            
+        logger.info(f"API Summary data response: {json.dumps(summary_data, indent=2)}")
+        
+        return jsonify(summary_data)
+    
+    except Exception as e:
+        logger.exception("Error in API summary route")
+        return jsonify({"error": f"Error retrieving account summary: {str(e)}"}), 500
+
+@app.route("/api/positions")
+def api_positions():
+    """JSON API endpoint for positions data"""
+    try:
+        BASE_API_URL = get_base_api_url(request)
+        
+        # Get accounts
+        accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
+        
+        if error:
+            return jsonify({"error": f"Failed to get accounts: {error}"}), 500
+        
+        if not accounts:
+            return jsonify({"error": "No accounts found"}), 404
+        
+        # Try the second account if available, otherwise use the first one
+        account = accounts[1] if len(accounts) > 1 else accounts[0]
+        account_id = account["id"]
+        
+        # Fetch positions data from IBKR API using portfolio2 endpoint
+        positions_data, error = safe_api_request(f"{BASE_API_URL}/portfolio2/{account_id}/positions?direction=a&sort=position")
+        
+        if error:
+            return jsonify({"error": f"Failed to get positions data: {error}"}), 500
+            
+        logger.info(f"API Positions data response: {json.dumps(positions_data, indent=2)}")
+        
+        return jsonify(positions_data)
+    
+    except Exception as e:
+        logger.exception("Error in API positions route")
+        return jsonify({"error": f"Error retrieving positions: {str(e)}"}), 500
+
 @app.route("/real-market")
 def real_market():
     try:
