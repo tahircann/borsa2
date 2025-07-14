@@ -1278,7 +1278,14 @@ export const getAllocation = async (): Promise<AllocationData> => {
           lastUpdate: cachedData.lastUpdate,
           status: cachedData.status
         });
-        return cachedData.data;
+        // Process the cached data to match expected structure
+        const rawData = cachedData.data;
+        const result: AllocationData = {
+          assetClass: Array.isArray(rawData.assetClass) ? rawData.assetClass : [],
+          sector: Array.isArray(rawData.sector) ? rawData.sector : [],
+          industry: Array.isArray(rawData.industry) ? rawData.industry : []
+        };
+        return result;
       }
     }
   } catch (error) {
