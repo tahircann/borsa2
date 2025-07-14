@@ -256,6 +256,8 @@ def orders():
 @app.route("/order", methods=['POST'])
 def place_order():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         print("== placing order ==")
 
         # Güvenli API isteği
@@ -298,6 +300,8 @@ def place_order():
 @app.route("/orders/<order_id>/cancel")
 def cancel_order(order_id):
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Güvenli API isteği
         accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
         
@@ -360,6 +364,8 @@ def portfolio():
 @app.route("/watchlists")
 def watchlists():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Güvenli API isteği
         watchlist_response, error = safe_api_request(f"{BASE_API_URL}/iserver/watchlists")
         
@@ -455,6 +461,8 @@ def create_watchlist():
 @app.route("/scanner")
 def scanner():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Güvenli API isteği
         params_response, error = safe_api_request(f"{BASE_API_URL}/iserver/scanner/params")
         
@@ -712,6 +720,8 @@ def generate_mock_performance_data(period, current_value):
 @app.route("/summary")
 def account_summary():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Get accounts
         accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
         
@@ -768,6 +778,8 @@ def account_summary():
 @app.route("/ledger")
 def portfolio_ledger():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Get accounts
         accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
         
@@ -799,6 +811,8 @@ def portfolio_ledger():
 @app.route("/positions")
 def positions():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Get accounts
         accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
         
@@ -864,6 +878,8 @@ def positions():
 @app.route("/allocation")
 def portfolio_allocation():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Get accounts
         accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
         
