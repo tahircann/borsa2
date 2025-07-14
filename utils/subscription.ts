@@ -88,16 +88,15 @@ export const checkFeatureAccess = (feature: 'stock-ranks' | 'portfolio' | 'advan
   return hasPremiumMembership();
 };
 
-// Shopier payment processing
-export const processPayment = async (planId: string, paymentMethod: 'shopier' | 'card' = 'shopier'): Promise<{
+// Gumroad payment processing
+export const processPayment = async (planId: string, paymentMethod: 'gumroad' | 'card' = 'gumroad'): Promise<{
   success: boolean;
   message: string;
   transactionId?: string;
-  paymentHTML?: string;
+  paymentUrl?: string;
 }> => {
-  if (paymentMethod === 'shopier') {
-    // Shopier ile ödeme
-    const { initiateShopierPayment, openShopierPaymentWindow } = await import('../services/shopierService');
+  if (paymentMethod === 'gumroad') {
+    // Gumroad ile ödeme
     const { getUser } = await import('./auth');
     
     const user = getUser();
@@ -109,39 +108,37 @@ export const processPayment = async (planId: string, paymentMethod: 'shopier' | 
     }
 
     try {
-      const paymentResult = await initiateShopierPayment({
-        planId: planId as 'monthly' | 'yearly',
-        userEmail: user.email,
-        userName: user.username,
-        userSurname: user.username, // Eğer surname yoksa username kullan
-        userId: user.id
+      const response = await fetch('/api/gumroad/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: user.email,
+          returnUrl: window.location.origin + '/subscription-success'
+        }),
       });
 
-      if (paymentResult.success && paymentResult.paymentHTML) {
-        // Ödeme penceresini aç
-        const paymentOpened = await openShopierPaymentWindow(paymentResult.paymentHTML);
+      const result = await response.json();
+
+      if (result.success && result.paymentUrl) {
+        // Ödeme sayfasına yönlendir
+        window.open(result.paymentUrl, '_blank');
         
-        if (paymentOpened) {
-          return {
-            success: true,
-            message: 'Ödeme penceresi açıldı. Lütfen ödeme işleminizi tamamlayın.',
-            transactionId: paymentResult.orderId,
-            paymentHTML: paymentResult.paymentHTML
-          };
-        } else {
-          return {
-            success: false,
-            message: 'Ödeme penceresi açılamadı. Pop-up engelleyicinizi kontrol edin.'
-          };
-        }
+        return {
+          success: true,
+          message: 'Ödeme sayfasına yönlendiriliyorsunuz. Lütfen ödeme işleminizi tamamlayın.',
+          transactionId: result.productId,
+          paymentUrl: result.paymentUrl
+        };
       } else {
         return {
           success: false,
-          message: paymentResult.message || 'Ödeme başlatılamadı'
+          message: result.message || 'Ödeme başlatılamadı'
         };
       }
     } catch (error) {
-      console.error('Shopier payment error:', error);
+      console.error('Gumroad payment error:', error);
       return {
         success: false,
         message: 'Ödeme işlemi başlatılırken bir hata oluştu'

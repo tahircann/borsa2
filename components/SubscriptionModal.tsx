@@ -165,9 +165,9 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
           <h4 className="font-semibold mb-3">Ödeme Yöntemi</h4>
           <div className="space-y-2">
             <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-              <input type="radio" name="payment" value="shopier" defaultChecked className="mr-3" />
+              <input type="radio" name="payment" value="gumroad" defaultChecked className="mr-3" />
               <FiCreditCard className="mr-2" />
-              <span>Shopier ile Güvenli Ödeme</span>
+              <span>Gumroad ile Güvenli Ödeme</span>
             </label>
           </div>
         </div>
@@ -175,18 +175,18 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <div className="flex items-center mb-2">
             <FiCreditCard className="h-5 w-5 text-blue-600 mr-2" />
-            <h4 className="font-semibold text-blue-800">Shopier Güvenli Ödeme</h4>
+            <h4 className="font-semibold text-blue-800">Gumroad Güvenli Ödeme</h4>
           </div>
           <p className="text-blue-700 text-sm">
-            Ödeme işleminiz Shopier'in güvenli altyapısı üzerinden gerçekleştirilecektir. 
-            Kredi kartı, banka kartı ve diğer ödeme seçeneklerini kullanabilirsiniz.
+            Ödeme işleminiz Gumroad'ın güvenli altyapısı üzerinden gerçekleştirilecektir. 
+            Kredi kartı, PayPal ve diğer ödeme seçeneklerini kullanabilirsiniz.
           </p>
           <div className="mt-3">
             <div className="flex items-center space-x-2">
               <span className="text-xs bg-white px-2 py-1 rounded border">Visa</span>
               <span className="text-xs bg-white px-2 py-1 rounded border">Mastercard</span>
-              <span className="text-xs bg-white px-2 py-1 rounded border">Troy</span>
-              <span className="text-xs bg-white px-2 py-1 rounded border">3D Secure</span>
+              <span className="text-xs bg-white px-2 py-1 rounded border">PayPal</span>
+              <span className="text-xs bg-white px-2 py-1 rounded border">Stripe</span>
             </div>
           </div>
         </div>
@@ -209,12 +209,12 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Shopier'e Yönlendiriliyor...
+                Gumroad'a Yönlendiriliyor...
               </>
             ) : (
               <>
                 <FiCreditCard className="mr-2 h-4 w-4" />
-                Shopier ile Ödeme Yap
+                Gumroad ile Ödeme Yap
               </>
             )}
           </button>

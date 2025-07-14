@@ -153,4 +153,68 @@ export const renewMembership = (userId: string, type: 'monthly' | 'yearly'): boo
   
   saveUsers(users);
   return true;
-}; 
+};
+
+// Check membership status with Gumroad
+export const verifyMembershipWithGumroad = async (email: string): Promise<{
+  hasAccess: boolean;
+  subscriptionInfo?: any;
+}> => {
+  try {
+    const response = await fetch('/api/gumroad/verify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const result = await response.json();
+    
+    return {
+      hasAccess: result.hasAccess || false,
+      subscriptionInfo: result.subscriptionInfo
+    };
+  } catch (error) {
+    console.error('Gumroad verification error:', error);
+    return { hasAccess: false };
+  }
+};
+
+// Sync local membership status with Gumroad
+export const syncMembershipWithGumroad = async (userId: string, email: string): Promise<boolean> => {
+  try {
+    const verification = await verifyMembershipWithGumroad(email);
+    const users = getUsers();
+    
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex === -1) return false;
+    
+    const updatedUsers = [...users];
+    const user = updatedUsers[userIndex];
+    
+    if (verification.hasAccess) {
+      // User has active Gumroad subscription, grant premium access
+      updatedUsers[userIndex] = {
+        ...user,
+        membershipType: 'premium' as const,
+        membershipExpiry: undefined, // Gumroad manages subscription lifecycle
+        gumroadSubscription: verification.subscriptionInfo
+      };
+    } else {
+      // No active subscription, set to free
+      updatedUsers[userIndex] = {
+        ...user,
+        membershipType: 'free' as const,
+        membershipExpiry: undefined,
+        gumroadSubscription: undefined
+      };
+    }
+    
+    saveUsers(updatedUsers);
+    return verification.hasAccess;
+  } catch (error) {
+    console.error('Membership sync error:', error);
+    return false;
+  }
+};

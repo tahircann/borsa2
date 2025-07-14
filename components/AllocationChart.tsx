@@ -15,17 +15,12 @@ interface AllocationChartProps {
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    const percentage = ((data.value / data.totalValue) * 100).toFixed(2);
     return (
       <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
         <p className="font-medium text-gray-900">{data.name}</p>
-        <p className="text-gray-700">
-          ${data.value.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
-        </p>
-        <p className="text-gray-600 text-sm">
-          {((data.value / data.totalValue) * 100).toFixed(2)}%
+        <p className="text-gray-700 text-lg font-semibold">
+          {percentage}%
         </p>
       </div>
     );
@@ -97,10 +92,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({ data, totalValue, tit
               className="text-gray-800 font-bold"
               fontSize="16"
             >
-              {totalValue.toLocaleString(undefined, { 
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
+              100%
             </text>
           </PieChart>
         </ResponsiveContainer>

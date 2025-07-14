@@ -9,6 +9,7 @@ export interface User {
   membershipType: 'free' | 'premium';
   membershipExpiry?: Date;
   createdAt: Date;
+  gumroadSubscription?: any;
 }
 
 export interface LoginCredentials {
