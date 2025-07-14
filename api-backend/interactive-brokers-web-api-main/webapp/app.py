@@ -332,6 +332,8 @@ def cancel_order(order_id):
 @app.route("/portfolio")
 def portfolio():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Güvenli API isteği
         accounts, error = safe_api_request(f"{BASE_API_URL}/portfolio/accounts")
         
@@ -553,6 +555,8 @@ def error():
 @app.route("/performance")
 def performance():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         period = request.args.get('period', '1m')
         
         # Hesapları kontrol et
@@ -1102,6 +1106,8 @@ def api_allocation():
 @app.route("/real-market")
 def real_market():
     try:
+        BASE_API_URL = get_base_api_url(request)
+        
         # Get query parameters for contract IDs and fields
         conids = request.args.get('conids', '265598,8314')  # Default contracts if none provided
         fields = request.args.get('fields', '31,84,86')     # Default fields if none provided
