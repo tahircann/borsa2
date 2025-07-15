@@ -13,23 +13,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    // Get products to find subscription products
+    // Get products to find the premium subscription product
     const products = await gumroadService.getProducts();
-    const subscriptionProduct = products.find(p => p.is_tiered_membership);
+    console.log('📦 Available products:', products.map(p => ({ name: p.name, price: p.formatted_price, isSubscription: p.is_tiered_membership })));
+    
+    // Find the premium subscription product (highest price subscription)
+    const subscriptionProducts = products.filter(p => p.is_tiered_membership);
+    const premiumProduct = subscriptionProducts.find(p => 
+      p.name.toLowerCase().includes('premium') || p.price >= 20
+    ) || subscriptionProducts[0]; // Fallback to first subscription if no premium found
 
-    if (!subscriptionProduct) {
-      return res.status(404).json({ error: 'No subscription product found' });
+    if (!premiumProduct) {
+      return res.status(404).json({ error: 'No premium subscription product found' });
     }
 
-    // Generate payment link
-    const paymentLink = gumroadService.getPaymentLink(subscriptionProduct.id, email);
+    console.log('💎 Selected premium product:', premiumProduct.name, premiumProduct.formatted_price);
+
+    // Generate payment link for premium product only
+    const paymentLink = gumroadService.getPaymentLink(premiumProduct.id, email);
 
     return res.status(200).json({
       success: true,
       paymentUrl: paymentLink,
-      productId: subscriptionProduct.id,
-      productName: subscriptionProduct.name,
-      price: subscriptionProduct.formatted_price
+      productId: premiumProduct.id,
+      productName: premiumProduct.name,
+      price: premiumProduct.formatted_price
     });
 
   } catch (error) {

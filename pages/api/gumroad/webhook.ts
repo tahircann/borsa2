@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { gumroadService } from '@/services/gumroadService';
 import crypto from 'crypto';
+import axios from 'axios';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -10,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // Verify webhook signature if secret is configured
     const webhookSecret = process.env.GUMROAD_WEBHOOK_SECRET;
-    if (webhookSecret) {
+    if (webhookSecret && webhookSecret !== 'your_webhook_secret_here') {
       const signature = req.headers['x-gumroad-signature'] as string;
       const body = JSON.stringify(req.body);
       const expectedSignature = crypto
@@ -24,42 +25,107 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    const { buyer_email, product_id, sale_id, resource_name, action } = req.body;
+    const { 
+      buyer_email, 
+      product_id, 
+      product_name,
+      sale_id, 
+      resource_name, 
+      action,
+      price,
+      recurrence 
+    } = req.body;
 
-    console.log('Gumroad webhook received:', {
+    console.log('🎣 Gumroad webhook received:', {
       action,
       resource_name,
       buyer_email,
       product_id,
+      product_name,
+      price,
+      recurrence,
       sale_id
     });
 
     // Handle different webhook events
     switch (action) {
       case 'sale':
-        // Handle successful payment
-        console.log(`New sale: ${buyer_email} purchased ${product_id}`);
-        // You can add user to database, send welcome email, etc.
+        // Handle successful payment - grant premium membership
+        console.log(`💰 New sale: ${buyer_email} purchased ${product_name} (${price})`);
+        
+        // Determine membership type based on product or recurrence
+        let membershipType: 'monthly' | 'yearly' = 'monthly';
+        if (recurrence && recurrence.includes('year')) {
+          membershipType = 'yearly';
+        } else if (product_name && product_name.toLowerCase().includes('year')) {
+          membershipType = 'yearly';
+        }
+        
+        // Update membership via API
+        try {
+          const baseUrl = req.headers.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          await axios.post(`${baseUrl}/api/membership/update`, {
+            email: buyer_email,
+            membershipType,
+            action: 'grant',
+            gumroadData: {
+              sale_id,
+              product_id,
+              product_name,
+              price,
+              recurrence,
+              purchaseDate: new Date().toISOString()
+            }
+          });
+          
+          console.log(`✅ Premium membership granted to ${buyer_email}`);
+        } catch (error) {
+          console.error('Failed to update membership:', error);
+        }
         break;
 
       case 'refund':
-        // Handle refund
-        console.log(`Refund processed for: ${buyer_email}, product: ${product_id}`);
-        // Remove user access, update database, etc.
+        // Handle refund - revoke premium membership
+        console.log(`🔄 Refund processed for: ${buyer_email}, product: ${product_name}`);
+        
+        try {
+          const baseUrl = req.headers.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          await axios.post(`${baseUrl}/api/membership/update`, {
+            email: buyer_email,
+            action: 'revoke'
+          });
+          
+          console.log(`❌ Premium membership revoked for ${buyer_email}`);
+        } catch (error) {
+          console.error('Failed to revoke membership:', error);
+        }
         break;
 
       case 'dispute':
-        // Handle dispute
-        console.log(`Dispute opened for: ${buyer_email}, product: ${product_id}`);
+        // Handle dispute - temporarily revoke access
+        console.log(`⚠️ Dispute opened for: ${buyer_email}, product: ${product_name}`);
+        
+        try {
+          const baseUrl = req.headers.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+          await axios.post(`${baseUrl}/api/membership/update`, {
+            email: buyer_email,
+            action: 'revoke'
+          });
+          
+          console.log(`⚠️ Premium membership suspended for ${buyer_email} due to dispute`);
+        } catch (error) {
+          console.error('Failed to suspend membership:', error);
+        }
         break;
 
       case 'cancellation':
         // Handle subscription cancellation
-        console.log(`Subscription cancelled for: ${buyer_email}, product: ${product_id}`);
+        console.log(`🚫 Subscription cancelled for: ${buyer_email}, product: ${product_name}`);
+        // Note: Usually you'd let them keep access until expiry, but you can revoke immediately if needed
         break;
 
       default:
-        console.log(`Unhandled webhook action: ${action}`);
+        console.log(`❓ Unhandled webhook action: ${action}`);
     }
 
     // Always respond with 200 to acknowledge receipt

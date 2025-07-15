@@ -238,6 +238,98 @@ export const updateMembership = (membershipType: 'monthly' | 'yearly'): boolean 
   return true;
 };
 
+// Update user membership by email (for webhook usage)
+export const updateMembershipByEmail = (email: string, membershipType: 'monthly' | 'yearly', gumroadData?: any): boolean => {
+  if (!isBrowser()) return false;
+  
+  const users = getUsers();
+  const user = users.find(u => u.email === email);
+  
+  if (!user) {
+    console.log(`❌ User not found for email: ${email}`);
+    return false;
+  }
+  
+  const now = new Date();
+  const expiry = new Date(now);
+  
+  if (membershipType === 'monthly') {
+    expiry.setMonth(expiry.getMonth() + 1);
+  } else if (membershipType === 'yearly') {
+    expiry.setFullYear(expiry.getFullYear() + 1);
+  }
+  
+  user.membershipType = 'premium';
+  user.membershipExpiry = expiry;
+  if (gumroadData) {
+    user.gumroadSubscription = gumroadData;
+  }
+  
+  // Update in users array
+  const updatedUsers = users.map(u => u.id === user.id ? user : u);
+  saveUsers(updatedUsers);
+  
+  // If this is the current user, update current user data too
+  const currentUser = getUser();
+  if (currentUser && currentUser.id === user.id) {
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    // Trigger auth state change event
+    window.dispatchEvent(new CustomEvent('authStateChange', { detail: user }));
+  }
+  
+  console.log(`✅ Updated membership for ${email} to ${membershipType} premium until ${expiry.toLocaleDateString()}`);
+  return true;
+};
+
+// Remove user membership (for cancellations/refunds)
+export const removeMembershipByEmail = (email: string): boolean => {
+  if (!isBrowser()) return false;
+  
+  const users = getUsers();
+  const user = users.find(u => u.email === email);
+  
+  if (!user) {
+    console.log(`❌ User not found for email: ${email}`);
+    return false;
+  }
+  
+  user.membershipType = 'free';
+  user.membershipExpiry = undefined;
+  user.gumroadSubscription = undefined;
+  
+  // Update in users array
+  const updatedUsers = users.map(u => u.id === user.id ? user : u);
+  saveUsers(updatedUsers);
+  
+  // If this is the current user, update current user data too
+  const currentUser = getUser();
+  if (currentUser && currentUser.id === user.id) {
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    // Trigger auth state change event
+    window.dispatchEvent(new CustomEvent('authStateChange', { detail: user }));
+  }
+  
+  console.log(`✅ Removed membership for ${email}`);
+  return true;
+};
+
+// Check membership from server API
+const checkServerMembership = async (email: string): Promise<{ type: 'free' | 'premium', expiry?: string, isActive: boolean }> => {
+  try {
+    const response = await fetch(`/api/membership/update?email=${encodeURIComponent(email)}`);
+    const data = await response.json();
+    
+    return {
+      type: data.membershipType || 'free',
+      expiry: data.expiry,
+      isActive: data.isActive || false
+    };
+  } catch (error) {
+    console.error('Failed to check membership from server:', error);
+    return { type: 'free', isActive: false };
+  }
+};
+
 // Custom hook for authentication
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -259,14 +351,60 @@ export const useAuth = () => {
     if (isBrowser()) {
       const currentUser = getUser();
       setUser(currentUser);
+      
+      // Check server membership status if user is logged in
+      if (currentUser && !currentUser.isAdmin) {
+        checkServerMembership(currentUser.email).then(serverMembership => {
+          if (serverMembership.isActive && serverMembership.type === 'premium') {
+            // Update local user data with server membership
+            currentUser.membershipType = 'premium';
+            if (serverMembership.expiry) {
+              currentUser.membershipExpiry = new Date(serverMembership.expiry);
+            }
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            setUser({ ...currentUser });
+            console.log('✅ Synced premium membership from server');
+          } else if (currentUser.membershipType === 'premium' && !serverMembership.isActive) {
+            // Server says no premium, but local says yes - server wins
+            currentUser.membershipType = 'free';
+            currentUser.membershipExpiry = undefined;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            setUser({ ...currentUser });
+            console.log('⚠️ Premium membership expired - updated from server');
+          }
+        }).catch(error => {
+          console.error('Failed to sync membership from server:', error);
+        });
+      }
+      
       setLoading(false);
     }
   }, []);
 
-  const loginUser = (credentials: LoginCredentials) => {
+  const loginUser = async (credentials: LoginCredentials) => {
     const result = login(credentials);
     if (result.success && result.user) {
       setUser(result.user);
+      
+      // Check server membership status for non-admin users
+      if (!result.user.isAdmin) {
+        try {
+          const serverMembership = await checkServerMembership(result.user.email);
+          if (serverMembership.isActive && serverMembership.type === 'premium') {
+            // Update user with server membership data
+            result.user.membershipType = 'premium';
+            if (serverMembership.expiry) {
+              result.user.membershipExpiry = new Date(serverMembership.expiry);
+            }
+            localStorage.setItem('currentUser', JSON.stringify(result.user));
+            setUser({ ...result.user });
+            console.log('✅ Synced premium membership from server on login');
+          }
+        } catch (error) {
+          console.error('Failed to sync membership on login:', error);
+        }
+      }
+      
       // Trigger a custom event to notify other components
       window.dispatchEvent(new CustomEvent('authStateChange', { detail: result.user }));
     }
@@ -318,4 +456,4 @@ export const useAuth = () => {
     },
     updateMembership: updateUserMembership
   };
-}; 
+};

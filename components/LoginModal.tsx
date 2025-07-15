@@ -25,7 +25,7 @@ export default function LoginModal({ isOpen, onClose, onSwitchToRegister }: Logi
     setLoading(true);
     
     const credentials: LoginCredentials = { email, password };
-    const result = login(credentials);
+    const result = await login(credentials);
     
     setLoading(false);
     

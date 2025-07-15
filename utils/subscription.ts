@@ -179,6 +179,23 @@ export const processPayment = async (planId: string, paymentMethod: 'gumroad' | 
   }
 };
 
+// Check membership status from server API
+const checkMembershipFromServer = async (email: string): Promise<{ type: 'free' | 'premium', expiry?: string, isActive: boolean }> => {
+  try {
+    const response = await fetch(`/api/membership/update?email=${encodeURIComponent(email)}`);
+    const data = await response.json();
+    
+    return {
+      type: data.membershipType || 'free',
+      expiry: data.expiry,
+      isActive: data.isActive || false
+    };
+  } catch (error) {
+    console.error('Failed to check membership from server:', error);
+    return { type: 'free', isActive: false };
+  }
+};
+
 // Custom hook for subscription management
 export const useSubscription = () => {
   const [loading, setLoading] = useState<boolean>(true);
