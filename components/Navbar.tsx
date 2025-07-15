@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { FiBell, FiUser, FiLogOut, FiCreditCard, FiMenu, FiX, FiBarChart2, FiPieChart, FiTrendingUp, FiSearch, FiStar, FiUserPlus, FiSettings, FiCalendar } from 'react-icons/fi';
+import { FiBell, FiUser, FiLogOut, FiCreditCard, FiMenu, FiX, FiBarChart2, FiPieChart, FiTrendingUp, FiSearch, FiStar, FiUserPlus, FiSettings, FiCalendar, FiChevronDown } from 'react-icons/fi';
 import { useAuth } from '../utils/auth';
 import { useSubscription } from '../utils/subscription';
 import { LanguageContext } from '../pages/_app';
@@ -21,6 +21,7 @@ export default function Navbar({ isAdmin }: NavbarProps) {
   const { user, logout, isAuthenticated, hasPremiumMembership } = useAuth();
   const { isSubscribed, subscriptionDetails, loading: subscriptionLoading } = useSubscription();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const router = useRouter();
   const { language, setLanguage } = useContext(LanguageContext);
   const [forceUpdate, setForceUpdate] = useState(0);
@@ -38,6 +39,19 @@ export default function Navbar({ isAdmin }: NavbarProps) {
     window.addEventListener('authStateChange', handleAuthChange);
     return () => window.removeEventListener('authStateChange', handleAuthChange);
   }, []);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (userMenuOpen && !target.closest('.user-menu')) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
 
   // Handle custom events for modal switching
   useEffect(() => {
@@ -222,22 +236,76 @@ export default function Navbar({ isAdmin }: NavbarProps) {
                   )}
                   
                   {/* User Menu */}
-                  <div className="flex items-center space-x-2">
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-gray-700">
-                        {user?.username}
-                      </div>
-                      {user?.isAdmin && (
-                        <div className="text-xs text-blue-600">Admin</div>
-                      )}
-                    </div>
+                  <div className="relative user-menu">
                     <button
-                      onClick={handleLogout}
-                      className="p-2 text-gray-500 hover:text-red-600 focus:outline-none transition-colors rounded-lg hover:bg-red-50"
-                      title={language === 'en' ? 'Logout' : 'Çıkış Yap'}
+                      onClick={() => setUserMenuOpen(!userMenuOpen)}
+                      className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 focus:outline-none transition-colors"
                     >
-                      <FiLogOut className="h-4 w-4" />
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-gray-700">
+                          {user?.username}
+                        </div>
+                        {user?.isAdmin && (
+                          <div className="text-xs text-blue-600">Admin</div>
+                        )}
+                      </div>
+                      <FiChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
+
+                    {/* User Dropdown Menu */}
+                    {userMenuOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        <div className="py-1">
+                          <Link href="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <FiUser className="h-4 w-4 mr-2" />
+                            {language === 'en' ? 'Profile' : 'Profil'}
+                          </Link>
+                          {!user?.isAdmin && (
+                            <>
+                              <Link href="/portfolio" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <FiPieChart className="h-4 w-4 mr-2" />
+                                {language === 'en' ? 'Portfolio' : 'Portföy'}
+                              </Link>
+                              <Link href="/positions" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <FiBarChart2 className="h-4 w-4 mr-2" />
+                                {language === 'en' ? 'Positions' : 'Pozisyonlar'}
+                              </Link>
+                              <Link href="/performance" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <FiTrendingUp className="h-4 w-4 mr-2" />
+                                {language === 'en' ? 'Performance' : 'Performans'}
+                              </Link>
+                              <Link href="/sectors" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <FiPieChart className="h-4 w-4 mr-2" />
+                                {language === 'en' ? 'Sectors' : 'Sektörler'}
+                              </Link>
+                              {!isPremium && (
+                                <button
+                                  onClick={() => {
+                                    setShowSubscriptionModal(true);
+                                    setUserMenuOpen(false);
+                                  }}
+                                  className="flex items-center w-full px-4 py-2 text-sm text-amber-600 hover:bg-amber-50"
+                                >
+                                  <FiStar className="h-4 w-4 mr-2" />
+                                  {language === 'en' ? 'Get Premium' : 'Premium Ol'}
+                                </button>
+                              )}
+                            </>
+                          )}
+                          <div className="border-t border-gray-100 my-1"></div>
+                          <button
+                            onClick={() => {
+                              handleLogout();
+                              setUserMenuOpen(false);
+                            }}
+                            className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                          >
+                            <FiLogOut className="h-4 w-4 mr-2" />
+                            {language === 'en' ? 'Logout' : 'Çıkış Yap'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

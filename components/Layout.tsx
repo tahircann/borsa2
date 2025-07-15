@@ -55,7 +55,7 @@ export default function Layout({ children }: LayoutProps) {
       
       <SubscriptionContext.Provider value={subscription}>
         <div className="flex min-h-screen bg-gray-50 relative">
-          {/* Hamburger menu button for admin - always visible */}
+          {/* Hamburger menu button for admin only */}
           {isAdmin && (
             <button 
               onClick={toggleSidebar} 
@@ -66,7 +66,7 @@ export default function Layout({ children }: LayoutProps) {
             </button>
           )}
           
-          {/* Admin sidebar overlay - only visible when sidebar is open */}
+          {/* Admin sidebar overlay - only visible when sidebar is open and user is admin */}
           {isAdmin && sidebarOpen && (
             <div 
               className="fixed inset-0 bg-gray-600 bg-opacity-50 z-20" 
@@ -75,7 +75,7 @@ export default function Layout({ children }: LayoutProps) {
             ></div>
           )}
           
-          {/* Admin sidebar */}
+          {/* Admin sidebar - only for admin users */}
           {isAdmin && (
             <div 
               className={`
@@ -86,6 +86,7 @@ export default function Layout({ children }: LayoutProps) {
               <Sidebar onClose={toggleSidebar} />
             </div>
           )}
+          
           <div className="flex-1 flex flex-col min-h-screen">
             <Navbar isAdmin={isAdmin} />
             <main className="container mx-auto px-4 py-6 flex-1">

@@ -273,7 +273,14 @@ export default function PortfolioPage() {
                         position.unrealizedPnL >= 0 ? 'text-green-600' : 'text-red-600'
                       }`}
                     >
-                      {formatCurrency(Math.abs(position.unrealizedPnL))}
+                      <div className="flex items-center justify-end">
+                        {position.percentChange >= 0 ? (
+                          <FiTrendingUp className="mr-1 h-4 w-4" />
+                        ) : (
+                          <FiTrendingDown className="mr-1 h-4 w-4" />
+                        )}
+                        {formatPercent(position.percentChange)}
+                      </div>
                     </td>
                     <td
                       className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${
