@@ -45,11 +45,16 @@ class GumroadService {
     this.accessToken = process.env.GUMROAD_ACCESS_TOKEN || '';
     if (!this.accessToken) {
       console.warn('⚠️ GUMROAD_ACCESS_TOKEN not set');
+    } else {
+      console.log('✅ Gumroad access token configured:', this.accessToken.substring(0, 10) + '...');
     }
   }
 
   private async makeRequest(endpoint: string, params: Record<string, any> = {}) {
     try {
+      console.log(`🌐 Making Gumroad API request to: ${endpoint}`);
+      console.log(`🔑 Using access token: ${this.accessToken.substring(0, 10)}...`);
+      
       const response = await axios.get(`${GUMROAD_API_BASE}${endpoint}`, {
         params: {
           access_token: this.accessToken,
@@ -58,13 +63,20 @@ class GumroadService {
         timeout: 10000
       });
 
+      console.log(`✅ Gumroad API response for ${endpoint}:`, response.status);
+
       if (!response.data.success) {
+        console.error(`❌ Gumroad API error for ${endpoint}:`, response.data);
         throw new Error(response.data.message || 'Gumroad API request failed');
       }
 
       return response.data;
     } catch (error) {
-      console.error(`Gumroad API error for ${endpoint}:`, error);
+      console.error(`❌ Gumroad API error for ${endpoint}:`, error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response status:', error.response?.status);
+        console.error('Response data:', error.response?.data);
+      }
       throw error;
     }
   }
@@ -158,24 +170,25 @@ class GumroadService {
 
   // Generate payment link for a product
   getPaymentLink(productId: string, customerEmail?: string): string {
-    const product = this.getProduct(productId);
-    // Note: This would need the actual short_url from the product
-    // For now returning a placeholder - you'd get this from getProduct()
-    return `https://gumroad.com/l/${productId}${customerEmail ? `?email=${customerEmail}` : ''}`;
+    // Use the premium product URL from environment
+    const baseUrl = process.env.GUMROAD_PREMIUM_PRODUCT_URL || `https://gumroad.com/l/${productId}`;
+    return customerEmail ? `${baseUrl}?email=${customerEmail}` : baseUrl;
   }
 
   // Verify a purchase/license
-  async verifyLicense(productId: string, licenseKey: string): Promise<any> {
+  async verifyLicense(licenseKey: string, productId: string): Promise<any> {
     try {
+      // According to Gumroad API docs, the license verification uses different endpoint
       const response = await axios.post(`${GUMROAD_API_BASE}/licenses/verify`, {
-        product_id: productId,
-        license_key: licenseKey
+        product_permalink: productId,
+        license_key: licenseKey,
+        increment_uses_count: false
       });
 
       return response.data;
     } catch (error) {
       console.error('Error verifying license:', error);
-      throw error;
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 }
