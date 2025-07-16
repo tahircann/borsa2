@@ -169,10 +169,22 @@ class GumroadService {
   }
 
   // Generate payment link for a product
-  getPaymentLink(productId: string, customerEmail?: string): string {
+  getPaymentLink(productId: string, customerEmail?: string, returnUrl?: string): string {
     // Use the premium product URL from environment
     const baseUrl = process.env.GUMROAD_PREMIUM_PRODUCT_URL || `https://gumroad.com/l/${productId}`;
-    return customerEmail ? `${baseUrl}?email=${customerEmail}` : baseUrl;
+    const params = new URLSearchParams();
+    
+    if (customerEmail) {
+      params.append('email', customerEmail);
+    }
+    
+    if (returnUrl) {
+      // Gumroad uses 'return_to' parameter for redirect after purchase
+      params.append('return_to', returnUrl);
+    }
+    
+    const queryString = params.toString();
+    return queryString ? `${baseUrl}?${queryString}` : baseUrl;
   }
 
   // Verify a purchase/license

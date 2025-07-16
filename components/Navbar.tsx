@@ -67,6 +67,27 @@ export default function Navbar({ isAdmin }: NavbarProps) {
     };
   }, []);
 
+  // Periodic membership refresh for better UX
+  useEffect(() => {
+    if (!isAuth || isPremium) return;
+    
+    // Check for membership updates every 30 seconds when user is not premium
+    const membershipCheckInterval = setInterval(async () => {
+      try {
+        const { refreshMembershipFromServer } = await import('../utils/auth');
+        const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+        if (user && user.email) {
+          await refreshMembershipFromServer();
+          window.dispatchEvent(new Event('authStateChange'));
+        }
+      } catch (error) {
+        console.error('Background membership check failed:', error);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(membershipCheckInterval);
+  }, [isAuth, isPremium]);
+
   const handleLogout = () => {
     logout();
     router.push('/');

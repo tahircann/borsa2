@@ -313,8 +313,8 @@ export const removeMembershipByEmail = (email: string): boolean => {
   return true;
 };
 
-// Check membership from server API
-const checkServerMembership = async (email: string): Promise<{ type: 'free' | 'premium', expiry?: string, isActive: boolean }> => {
+// Check membership status from server API
+const checkMembershipFromServer = async (email: string): Promise<{ type: 'free' | 'premium', expiry?: string, isActive: boolean }> => {
   try {
     const response = await fetch(`/api/membership/update?email=${encodeURIComponent(email)}`);
     const data = await response.json();
@@ -327,6 +327,57 @@ const checkServerMembership = async (email: string): Promise<{ type: 'free' | 'p
   } catch (error) {
     console.error('Failed to check membership from server:', error);
     return { type: 'free', isActive: false };
+  }
+};
+
+// Refresh membership from server and update local storage
+export const refreshMembershipFromServer = async (): Promise<boolean> => {
+  const user = getUser();
+  if (!user) return false;
+
+  try {
+    const serverMembership = await checkMembershipFromServer(user.email);
+    
+    if (serverMembership.type === 'premium' && serverMembership.isActive) {
+      // Update local user with server membership data
+      user.membershipType = 'premium';
+      user.membershipExpiry = serverMembership.expiry ? new Date(serverMembership.expiry) : undefined;
+      
+      // Update users array
+      const users = getUsers();
+      const userIndex = users.findIndex(u => u.id === user.id);
+      if (userIndex !== -1) {
+        users[userIndex] = user;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('users', JSON.stringify(users));
+          localStorage.setItem('currentUser', JSON.stringify(user));
+        }
+      }
+      
+      console.log('✅ Membership refreshed from server - Premium active');
+      return true;
+    } else {
+      // Update to free membership
+      user.membershipType = 'free';
+      user.membershipExpiry = undefined;
+      
+      // Update users array
+      const users = getUsers();
+      const userIndex = users.findIndex(u => u.id === user.id);
+      if (userIndex !== -1) {
+        users[userIndex] = user;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('users', JSON.stringify(users));
+          localStorage.setItem('currentUser', JSON.stringify(user));
+        }
+      }
+      
+      console.log('ℹ️ Membership refreshed from server - Free membership');
+      return false;
+    }
+  } catch (error) {
+    console.error('Failed to refresh membership from server:', error);
+    return false;
   }
 };
 
@@ -354,7 +405,7 @@ export const useAuth = () => {
       
       // Check server membership status if user is logged in
       if (currentUser && !currentUser.isAdmin) {
-        checkServerMembership(currentUser.email).then(serverMembership => {
+        checkMembershipFromServer(currentUser.email).then(serverMembership => {
           if (serverMembership.isActive && serverMembership.type === 'premium') {
             // Update local user data with server membership
             currentUser.membershipType = 'premium';
@@ -389,7 +440,7 @@ export const useAuth = () => {
       // Check server membership status for non-admin users
       if (!result.user.isAdmin) {
         try {
-          const serverMembership = await checkServerMembership(result.user.email);
+          const serverMembership = await checkMembershipFromServer(result.user.email);
           if (serverMembership.isActive && serverMembership.type === 'premium') {
             // Update user with server membership data
             result.user.membershipType = 'premium';
@@ -438,6 +489,17 @@ export const useAuth = () => {
     return success;
   };
 
+  const refreshMembershipFromServerHook = async () => {
+    const success = await refreshMembershipFromServer();
+    if (success) {
+      const updatedUser = getUser();
+      setUser(updatedUser);
+      // Trigger a custom event to notify other components
+      window.dispatchEvent(new CustomEvent('authStateChange', { detail: updatedUser }));
+    }
+    return success;
+  };
+
   return {
     user,
     loading,
@@ -454,6 +516,7 @@ export const useAuth = () => {
       }
       return false;
     },
-    updateMembership: updateUserMembership
+    updateMembership: updateUserMembership,
+    refreshMembershipFromServer: refreshMembershipFromServerHook
   };
 };

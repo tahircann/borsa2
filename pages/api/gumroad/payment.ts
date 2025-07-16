@@ -30,7 +30,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('💎 Selected premium product:', premiumProduct.name, premiumProduct.formatted_price);
 
     // Generate payment link for premium product only
-    const paymentLink = gumroadService.getPaymentLink(premiumProduct.id, email);
+    const paymentLink = gumroadService.getPaymentLink(
+      premiumProduct.id, 
+      email,
+      returnUrl || `${req.headers.origin || 'http://localhost:3000'}/subscription-success`
+    );
 
     return res.status(200).json({
       success: true,

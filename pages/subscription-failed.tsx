@@ -9,7 +9,7 @@ export default function SubscriptionFailed() {
   const [countdown, setCountdown] = useState(15);
 
   useEffect(() => {
-    // 15 saniye sonra ana sayfaya yönlendir
+    // Redirect to homepage after 15 seconds
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -25,15 +25,15 @@ export default function SubscriptionFailed() {
   }, [router]);
 
   const handleRetry = () => {
-    // Premium modal'ı açmak için ana sayfaya yönlendir
+    // Redirect to homepage to open premium modal
     router.push('/?showSubscription=true');
   };
 
   return (
     <>
       <Head>
-        <title>Ödeme Başarısız - Esen Global Investment</title>
-        <meta name="description" content="Ödeme işleminiz tamamlanamadı." />
+        <title>Payment Failed - Esen Global Investment</title>
+        <meta name="description" content="Your payment could not be completed." />
       </Head>
       
       <Layout>
@@ -45,29 +45,29 @@ export default function SubscriptionFailed() {
               </div>
               
               <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-                Ödeme Başarısız
+                Payment Failed
               </h2>
               
               <p className="mt-2 text-sm text-gray-600">
-                Ödeme işleminiz tamamlanamadı. Lütfen tekrar deneyin.
+                Your payment could not be completed. Please try again.
               </p>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Olası Nedenler:
+                Possible Reasons:
               </h3>
               
               <div className="space-y-2 text-sm text-gray-600">
-                <div>• Kart bilgilerinizde hata olabilir</div>
-                <div>• Kartınızda yeterli limit bulunmayabilir</div>
-                <div>• Banka tarafından işlem reddedilmiş olabilir</div>
-                <div>• İnternet bağlantınızda sorun yaşanmış olabilir</div>
+                <div>• There may be an error in your card information</div>
+                <div>• Your card may not have sufficient credit limit</div>
+                <div>• The transaction may have been declined by your bank</div>
+                <div>• There may have been an internet connection problem</div>
               </div>
               
               <div className="mt-4 p-3 bg-blue-50 rounded-md">
                 <p className="text-sm text-blue-800">
-                  Sorun devam ederse, lütfen bankanızla iletişime geçin veya farklı bir kart deneyin.
+                  If the problem persists, please contact your bank or try a different card.
                 </p>
               </div>
             </div>
@@ -78,7 +78,7 @@ export default function SubscriptionFailed() {
                 className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <FiRefreshCw className="h-4 w-4 mr-2" />
-                Tekrar Dene
+                Try Again
               </button>
               
               <button
@@ -86,11 +86,11 @@ export default function SubscriptionFailed() {
                 className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 <FiHome className="h-4 w-4 mr-2" />
-                Ana Sayfaya Dön
+                Return to Homepage
               </button>
               
               <div className="text-center text-sm text-gray-500">
-                {countdown} saniye sonra otomatik olarak ana sayfaya yönlendirileceksiniz.
+                You will be automatically redirected to the homepage in {countdown} seconds.
               </div>
             </div>
           </div>

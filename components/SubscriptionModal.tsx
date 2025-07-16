@@ -30,7 +30,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
     } catch (error) {
       setPaymentResult({
         success: false,
-        message: 'Bir hata oluştu. Lütfen tekrar deneyin.'
+        message: 'An error occurred. Please try again.'
       });
     } finally {
       setLoading(false);
@@ -47,7 +47,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
   const renderPlansStep = () => (
     <>
       <div className="flex justify-between items-center p-4 border-b">
-        <h3 className="text-2xl font-semibold text-gray-900">Premium Üyelik</h3>
+        <h3 className="text-2xl font-semibold text-gray-900">Premium Membership</h3>
         <button
           type="button"
           className="text-gray-400 hover:text-gray-500 focus:outline-none"
@@ -59,7 +59,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
       
       <div className="p-6">
         <p className="text-gray-600 mb-6 text-center">
-          Stock Ranks ve Portfolio özelliklerine erişim için premium üyelik gereklidir.
+          Premium membership is required to access Stock Ranks and Portfolio features.
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -74,7 +74,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
               {plan.popular && (
                 <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                   <div className="bg-primary-500 text-white text-xs px-3 py-1 rounded-full font-medium">
-                    En Popüler
+                    Most Popular
                   </div>
                 </div>
               )}
@@ -92,13 +92,13 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
                     <div className="flex items-center justify-center">
                       <span className="text-3xl font-bold text-primary-600">${plan.price}</span>
                       <span className="text-gray-500 ml-2">
-                        /{plan.period === 'monthly' ? 'ay' : 'yıl'}
+                        /{plan.period === 'monthly' ? 'month' : 'year'}
                       </span>
                     </div>
                     {plan.savings && (
                       <div className="flex items-center justify-center mt-1 text-green-600">
                         <FiPercent className="w-4 h-4 mr-1" />
-                        <span className="text-sm font-medium">${plan.savings} tasarruf</span>
+                        <span className="text-sm font-medium">${plan.savings} savings</span>
                       </div>
                     )}
                   </div>
@@ -126,7 +126,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
             onClick={() => setPaymentStep('payment')}
           >
             <FiCreditCard className="mr-2 h-4 w-4" />
-            Devam Et - ${plans.find(plan => plan.id === selectedPlan)?.price}
+            Continue - ${plans.find(plan => plan.id === selectedPlan)?.price}
           </button>
         </div>
       </div>
@@ -136,7 +136,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
   const renderPaymentStep = () => (
     <>
       <div className="flex justify-between items-center p-4 border-b">
-        <h3 className="text-2xl font-semibold text-gray-900">Ödeme</h3>
+        <h3 className="text-2xl font-semibold text-gray-900">Payment</h3>
         <button
           type="button"
           className="text-gray-400 hover:text-gray-500 focus:outline-none"
@@ -148,7 +148,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
       
       <div className="p-6">
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
-          <h4 className="font-semibold mb-2">Seçilen Plan</h4>
+          <h4 className="font-semibold mb-2">Selected Plan</h4>
           <div className="flex justify-between items-center">
             <span>{plans.find(plan => plan.id === selectedPlan)?.name}</span>
             <span className="font-semibold">${plans.find(plan => plan.id === selectedPlan)?.price}</span>
@@ -162,12 +162,12 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
         )}
         
         <div className="mb-6">
-          <h4 className="font-semibold mb-3">Ödeme Yöntemi</h4>
+          <h4 className="font-semibold mb-3">Payment Method</h4>
           <div className="space-y-2">
             <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
               <input type="radio" name="payment" value="gumroad" defaultChecked className="mr-3" />
               <FiCreditCard className="mr-2" />
-              <span>Gumroad ile Güvenli Ödeme</span>
+              <span>Secure Payment with Gumroad</span>
             </label>
           </div>
         </div>
@@ -175,11 +175,11 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <div className="flex items-center mb-2">
             <FiCreditCard className="h-5 w-5 text-blue-600 mr-2" />
-            <h4 className="font-semibold text-blue-800">Gumroad Güvenli Ödeme</h4>
+            <h4 className="font-semibold text-blue-800">Gumroad Secure Payment</h4>
           </div>
           <p className="text-blue-700 text-sm">
-            Ödeme işleminiz Gumroad'ın güvenli altyapısı üzerinden gerçekleştirilecektir. 
-            Kredi kartı, PayPal ve diğer ödeme seçeneklerini kullanabilirsiniz.
+            Your payment will be processed through Gumroad's secure infrastructure. 
+            You can use credit cards, PayPal and other payment options.
           </p>
           <div className="mt-3">
             <div className="flex items-center space-x-2">
@@ -198,7 +198,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
             onClick={() => setPaymentStep('plans')}
             disabled={loading}
           >
-            Geri
+            Back
           </button>
           <button
             type="button"
@@ -209,12 +209,12 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
             {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Gumroad'a Yönlendiriliyor...
+                Redirecting to Gumroad...
               </>
             ) : (
               <>
                 <FiCreditCard className="mr-2 h-4 w-4" />
-                Gumroad ile Ödeme Yap
+                Pay with Gumroad
               </>
             )}
           </button>
@@ -226,7 +226,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
   const renderSuccessStep = () => (
     <>
       <div className="flex justify-between items-center p-4 border-b">
-        <h3 className="text-2xl font-semibold text-green-600">Başarılı!</h3>
+        <h3 className="text-2xl font-semibold text-green-600">Success!</h3>
         <button
           type="button"
           className="text-gray-400 hover:text-gray-500 focus:outline-none"
@@ -241,7 +241,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
           <FiCheck className="h-6 w-6 text-green-600" />
         </div>
         
-        <h4 className="text-lg font-semibold mb-2">Premium Üyeliğiniz Aktif!</h4>
+        <h4 className="text-lg font-semibold mb-2">Your Premium Membership is Active!</h4>
         <p className="text-gray-600 mb-6">
           {paymentResult?.message}
         </p>
@@ -249,7 +249,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
         {paymentResult?.transactionId && (
           <div className="bg-gray-50 rounded-md p-3 mb-6">
             <p className="text-sm text-gray-600">
-              İşlem No: <span className="font-mono">{paymentResult.transactionId}</span>
+              Transaction ID: <span className="font-mono">{paymentResult.transactionId}</span>
             </p>
           </div>
         )}
@@ -259,7 +259,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
           className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none"
           onClick={handleClose}
         >
-          Devam Et
+          Continue
         </button>
       </div>
     </>

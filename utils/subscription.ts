@@ -20,33 +20,33 @@ export interface SubscriptionPlan {
 export const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: 'monthly',
-    name: 'Aylık Premium',
+    name: 'Monthly Premium',
     price: 25,
     period: 'monthly',
-    description: 'Tüm premium özelliklere aylık erişim',
+    description: 'Monthly access to all premium features',
     features: [
-      'Stock Ranks (Hisse Sıralaması) erişimi',
-      'Portfolio (Portföy) yönetimi',
-      'Gelişmiş analiz araçları',
-      'Gerçek zamanlı veriler',
-      'Email desteği'
+      'Stock Ranks access',
+      'Portfolio management',
+      'Advanced analysis tools',
+      'Real-time data',
+      'Email support'
     ],
   },
   {
     id: 'yearly',
-    name: 'Yıllık Premium',
+    name: 'Yearly Premium',
     price: 240,
     originalPrice: 300,
     period: 'yearly',
-    description: 'Tüm premium özelliklere yıllık erişim - %20 tasarruf',
+    description: 'Yearly access to all premium features - 20% savings',
     features: [
-      'Stock Ranks (Hisse Sıralaması) erişimi',
-      'Portfolio (Portföy) yönetimi',
-      'Gelişmiş analiz araçları',
-      'Gerçek zamanlı veriler',
-      'Öncelikli email desteği',
-      'Aylık rapora göre %20 tasarruf',
-      'Özel yatırım önerileri'
+      'Stock Ranks access',
+      'Portfolio management',
+      'Advanced analysis tools',
+      'Real-time data',
+      'Priority email support',
+      '20% savings compared to monthly',
+      'Exclusive investment recommendations'
     ],
     popular: true,
     savings: 60
@@ -103,7 +103,7 @@ export const processPayment = async (planId: string, paymentMethod: 'gumroad' | 
     if (!user) {
       return {
         success: false,
-        message: 'Kullanıcı girişi gerekli'
+        message: 'User login required'
       };
     }
 
@@ -127,21 +127,21 @@ export const processPayment = async (planId: string, paymentMethod: 'gumroad' | 
         
         return {
           success: true,
-          message: 'Ödeme sayfasına yönlendiriliyorsunuz. Lütfen ödeme işleminizi tamamlayın.',
+          message: 'You are being redirected to the payment page. Please complete your payment.',
           transactionId: result.productId,
           paymentUrl: result.paymentUrl
         };
       } else {
         return {
           success: false,
-          message: result.message || 'Ödeme başlatılamadı'
+          message: result.message || 'Payment could not be initiated'
         };
       }
     } catch (error) {
       console.error('Gumroad payment error:', error);
       return {
         success: false,
-        message: 'Ödeme işlemi başlatılırken bir hata oluştu'
+        message: 'An error occurred while initiating payment'
       };
     }
   } else {
@@ -158,20 +158,20 @@ export const processPayment = async (planId: string, paymentMethod: 'gumroad' | 
             resolve({
               success: true,
               message: planId === 'monthly' 
-                ? 'Aylık premium üyeliğiniz başarıyla aktifleştirildi!' 
-                : 'Yıllık premium üyeliğiniz başarıyla aktifleştirildi!',
+                ? 'Your monthly premium membership has been successfully activated!' 
+                : 'Your yearly premium membership has been successfully activated!',
               transactionId: `TRX_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             });
           } else {
             resolve({
               success: false,
-              message: 'Üyelik güncellenirken bir hata oluştu. Lütfen tekrar deneyin.'
+              message: 'An error occurred while updating membership. Please try again.'
             });
           }
         } else {
           resolve({
             success: false,
-            message: 'Ödeme işlemi başarısız. Lütfen kart bilgilerinizi kontrol edip tekrar deneyin.'
+            message: 'Payment failed. Please check your card information and try again.'
           });
         }
       }, 2000);
@@ -244,7 +244,7 @@ export const useSubscription = () => {
       setLoading(false);
       return {
         success: false,
-        message: 'Bir hata oluştu. Lütfen tekrar deneyin.'
+        message: 'An error occurred. Please try again.'
       };
     }
   };
@@ -258,12 +258,12 @@ export const useSubscription = () => {
       localStorage.setItem('subscriptionCanceled', 'true');
       return {
         success: true,
-        message: 'Üyeliğiniz mevcut dönem sonunda iptal edilecek.'
+        message: 'Your membership will be cancelled at the end of the current period.'
       };
     }
     return {
       success: false,
-      message: 'İptal edilecek aktif üyelik bulunamadı.'
+      message: 'No active membership found to cancel.'
     };
   };
 
