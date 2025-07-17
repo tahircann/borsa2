@@ -157,8 +157,14 @@ export default function PortfolioStockRanks() {
   const [sortField, setSortField] = useState<keyof StockRankData>('stockScore');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [filteredStocks, setFilteredStocks] = useState<StockRankData[]>(mockStockRanksData);
+  const [mounted, setMounted] = useState(false);
   const { user, isAuthenticated, hasPremiumMembership } = useAuth();
   const router = useRouter();
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Filter and sort stocks
   useEffect(() => {
@@ -220,8 +226,15 @@ export default function PortfolioStockRanks() {
     return 'text-red-600 bg-red-100';
   };
 
+  // Don't render until mounted on client side
+  if (!mounted) {
+    return null;
+  }
+
   if (!isAuthenticated()) {
-    router.push('/');
+    if (typeof window !== 'undefined') {
+      router.push('/');
+    }
     return null;
   }
 
@@ -453,4 +466,4 @@ export default function PortfolioStockRanks() {
       </Layout>
     </PremiumGuard>
   );
- 
+}
