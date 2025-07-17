@@ -62,7 +62,7 @@ const generateId = (): string => {
 };
 
 // Register function
-export const register = (credentials: RegisterCredentials): { success: boolean; message: string; user?: User } => {
+export const register = async (credentials: RegisterCredentials): Promise<{ success: boolean; message: string; user?: User }> => {
   const { email, username, password, confirmPassword } = credentials;
   
   // Validation
@@ -83,7 +83,30 @@ export const register = (credentials: RegisterCredentials): { success: boolean; 
   if (!emailRegex.test(email)) {
     return { success: false, message: 'Geçerli bir email adresi girin' };
   }
-  
+
+  try {
+    // Try to register via API first
+    const response = await fetch('/api/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, username, password }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      return { success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.', user: data.user };
+    } else {
+      // If API fails, fall back to localStorage
+      console.log('API registration failed, using localStorage fallback:', data.error);
+    }
+  } catch (error) {
+    console.error('Registration API error:', error);
+  }
+
+  // Fallback to localStorage
   const users = getUsers();
   
   // Check if user already exists
@@ -108,13 +131,44 @@ export const register = (credentials: RegisterCredentials): { success: boolean; 
   users.push(newUser);
   saveUsers(users);
   
+  // Store password hash
+  if (isBrowser()) {
+    localStorage.setItem(`password_${newUser.id}`, hashPassword(password));
+  }
+  
   return { success: true, message: 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.', user: newUser };
 };
 
 // Login function
-export const login = (credentials: LoginCredentials): { success: boolean; message: string; user?: User } => {
+export const login = async (credentials: LoginCredentials): Promise<{ success: boolean; message: string; user?: User }> => {
   const { email, password } = credentials;
   
+  try {
+    // Try to login via API first
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      if (isBrowser()) {
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+      }
+      return { success: true, message: 'Giriş başarılı', user: data.user };
+    } else {
+      // If API fails, fall back to localStorage
+      console.log('API login failed, using localStorage fallback:', data.error);
+    }
+  } catch (error) {
+    console.error('Login API error:', error);
+  }
+
+  // Fallback to localStorage
   // Check admin credentials
   if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
     const adminUser: User = {
@@ -433,7 +487,7 @@ export const useAuth = () => {
   }, []);
 
   const loginUser = async (credentials: LoginCredentials) => {
-    const result = login(credentials);
+    const result = await login(credentials);
     if (result.success && result.user) {
       setUser(result.user);
       
@@ -469,8 +523,8 @@ export const useAuth = () => {
     window.dispatchEvent(new CustomEvent('authStateChange', { detail: null }));
   };
 
-  const registerUser = (credentials: RegisterCredentials) => {
-    const result = register(credentials);
+  const registerUser = async (credentials: RegisterCredentials) => {
+    const result = await register(credentials);
     if (result.success && result.user) {
       // Store password for demo
       storePassword(result.user.id, credentials.password);

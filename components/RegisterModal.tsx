@@ -35,7 +35,7 @@ export default function RegisterModal({ isOpen, onClose, onSwitchToLogin }: Regi
       confirmPassword
     };
     
-    const result = register(credentials);
+    const result = await register(credentials);
     
     setLoading(false);
     

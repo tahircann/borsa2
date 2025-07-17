@@ -100,20 +100,20 @@ export default function Home() {
             style={{
               backgroundImage: 'url("https://images.pexels.com/photos/6781008/pexels-photo-6781008.jpeg?auto=compress&cs=tinysrgb&w=1920")',
               backgroundSize: 'cover',
-              filter: 'brightness(0.6)'
+              filter: 'brightness(0.4)'
             }}
           ></div>
-          <div className="absolute inset-0 bg-black/30"></div> {/* Overlay to darken image */}
+          <div className="absolute inset-0 bg-black/50"></div> {/* Stronger overlay for better text readability */}
         </div>
         
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48 flex flex-col items-center justify-center text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-            Unlock <span className="border-b-4 border-blue-500 pb-2">Financial Insights</span> with 
-                            <span className="text-blue-400"> ESEN GLOBAL</span> INVESTMENT
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white drop-shadow-lg">
+            Unlock <span className="border-b-4 border-blue-400 pb-2 text-white">Financial Insights</span> with 
+            <span className="text-blue-300"> ESEN GLOBAL</span> INVESTMENT
           </h1>
           
-          <p className="text-xl md:text-2xl max-w-3xl mx-auto font-light text-gray-100 leading-relaxed mb-12">
-                          Follow Esen Global Investment and portfolio performance in real-time. Subscribe now to gain
+          <p className="text-xl md:text-2xl max-w-3xl mx-auto font-light text-gray-100 leading-relaxed mb-12 drop-shadow-md">
+            Follow Esen Global Investment and portfolio performance in real-time. Subscribe now to gain
             access to investment and trade strategies and learn how navigate the market. Start
             your journey towards financial literacy today!
           </p>
