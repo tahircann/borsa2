@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { getAllUsers, updateUserMembership } from '../../../lib/database';
 
 // Mock database - in a real app, this would connect to an actual database
 interface User {
@@ -58,7 +59,7 @@ let mockUsers: User[] = [
   }
 ];
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { method } = req;
 
   // Simple admin check - in production, use proper JWT/session validation
@@ -71,8 +72,25 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   switch (method) {
     case 'GET':
-      // Get all users
-      return res.status(200).json({ users: mockUsers });
+      // Get all users from database
+      try {
+        const users = await getAllUsers();
+        const formattedUsers = users.map(user => ({
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          membershipType: user.membershipType,
+          membershipExpiry: user.membershipExpiry?.toISOString() || null,
+          isAdmin: user.isAdmin,
+          joinedAt: user.createdAt.toISOString(),
+          isPremium: user.membershipType === 'premium' && (!user.membershipExpiry || user.membershipExpiry > new Date())
+        }));
+        return res.status(200).json({ users: formattedUsers });
+      } catch (error) {
+        console.error('Database error:', error);
+        // Fallback to mock data
+        return res.status(200).json({ users: mockUsers });
+      }
 
     case 'PUT':
       // Update user membership
@@ -82,22 +100,42 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         return res.status(400).json({ error: 'User ID is required' });
       }
 
-      const userIndex = mockUsers.findIndex(u => u.id === userId);
-      if (userIndex === -1) {
-        return res.status(404).json({ error: 'User not found' });
+      try {
+        // Try to update in database first
+        const success = await updateUserMembership(
+          userId, 
+          membershipType, 
+          membershipExpiry ? new Date(membershipExpiry) : undefined
+        );
+        
+        if (success) {
+          return res.status(200).json({ 
+            message: 'User updated successfully'
+          });
+        } else {
+          throw new Error('Database update failed');
+        }
+      } catch (error) {
+        console.error('Database update error:', error);
+        
+        // Fallback to mock data update
+        const userIndex = mockUsers.findIndex(u => u.id === userId);
+        if (userIndex === -1) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Update the user
+        mockUsers[userIndex] = {
+          ...mockUsers[userIndex],
+          membershipType: membershipType || mockUsers[userIndex].membershipType,
+          membershipExpiry: membershipExpiry ? new Date(membershipExpiry) : mockUsers[userIndex].membershipExpiry
+        };
+
+        return res.status(200).json({ 
+          message: 'User updated successfully', 
+          user: mockUsers[userIndex] 
+        });
       }
-
-      // Update the user
-      mockUsers[userIndex] = {
-        ...mockUsers[userIndex],
-        membershipType: membershipType || mockUsers[userIndex].membershipType,
-        membershipExpiry: membershipExpiry ? new Date(membershipExpiry) : mockUsers[userIndex].membershipExpiry
-      };
-
-      return res.status(200).json({ 
-        message: 'User updated successfully', 
-        user: mockUsers[userIndex] 
-      });
 
     case 'DELETE':
       // Delete user

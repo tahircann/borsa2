@@ -361,11 +361,15 @@ export default function Home() {
               <div className="h-60 flex items-center justify-center">
                 <p>Loading...</p>
               </div>
-            ) : allocation && allocation.sector && allocation.sector.length > 0 ? (
+            ) : portfolio && portfolio.positions && portfolio.positions.length > 0 ? (
               <div className="h-60">
                 <AllocationChart 
-                  data={allocation.sector} 
-                  totalValue={allocation.sector.reduce((sum: number, item: any) => sum + item.value, 0)} 
+                  data={portfolio.positions.map((position: any, index: number) => ({
+                    name: position.symbol,
+                    value: position.marketValue || 0,
+                    color: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'][index % 8]
+                  }))} 
+                  totalValue={portfolio.positions.reduce((sum: number, item: any) => sum + (item.marketValue || 0), 0)} 
                   title="Holdings" 
                 />
               </div>
