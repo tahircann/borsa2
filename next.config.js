@@ -8,9 +8,10 @@ const nextConfig = {
   async rewrites() {
     console.log('Setting up API proxy rewrites');
     
-    // Both development and production use localhost:8080
-    // Development: SSH tunnel, Production: Docker external port mapping
-    const apiDestination = 'http://localhost:8080/:path*';
+    // Use production server for production, localhost for development
+    const apiDestination = process.env.NODE_ENV === 'production' 
+      ? `http://${process.env.SERVER_HOST || '145.223.80.133'}:8080/:path*`
+      : 'http://localhost:8080/:path*';
     
     console.log('API destination:', apiDestination);
     
