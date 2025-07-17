@@ -239,7 +239,10 @@ export default function PortfolioStockRanks() {
   }
 
   return (
-    <PremiumGuard>
+    <PremiumGuard 
+      useBlurOverlay={true} 
+      blurMessage="Upgrade to access comprehensive portfolio stock rankings and analysis"
+    >
       <Layout>
         <div className="container mx-auto px-4 py-8">
           {/* Header */}

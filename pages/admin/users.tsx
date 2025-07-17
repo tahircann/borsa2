@@ -32,7 +32,40 @@ export default function AdminUsersPage() {
 
   const loadUsers = async () => {
     try {
-      // In a real app, this would be an API call
+      setLoading(true);
+      
+      // Try to load from server first
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': 'admin-token',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const parsedUsers = data.users.map((u: any) => ({
+          ...u,
+          createdAt: new Date(u.createdAt),
+          membershipExpiry: u.membershipExpiry ? new Date(u.membershipExpiry) : undefined
+        }));
+        setUsers(parsedUsers);
+      } else {
+        // Fallback to localStorage if server fails
+        console.warn('Failed to load users from server, falling back to localStorage');
+        const savedUsers = localStorage.getItem('users');
+        if (savedUsers) {
+          const parsedUsers = JSON.parse(savedUsers).map((u: any) => ({
+            ...u,
+            createdAt: new Date(u.createdAt),
+            membershipExpiry: u.membershipExpiry ? new Date(u.membershipExpiry) : undefined
+          }));
+          setUsers(parsedUsers);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+      // Fallback to localStorage
       const savedUsers = localStorage.getItem('users');
       if (savedUsers) {
         const parsedUsers = JSON.parse(savedUsers).map((u: any) => ({
@@ -42,8 +75,6 @@ export default function AdminUsersPage() {
         }));
         setUsers(parsedUsers);
       }
-    } catch (error) {
-      console.error('Error loading users:', error);
     } finally {
       setLoading(false);
     }
@@ -64,16 +95,58 @@ export default function AdminUsersPage() {
     localStorage.setItem('users', JSON.stringify(updatedUsers));
   };
 
-  const changeMembership = (userId: string, newType: 'free' | 'premium') => {
-    const updatedUsers = users.map(u => 
-      u.id === userId ? { 
-        ...u, 
-        membershipType: newType,
-        membershipExpiry: newType === 'premium' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined
-      } : u
-    );
-    setUsers(updatedUsers);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
+  const changeMembership = async (userId: string, newType: 'free' | 'premium') => {
+    try {
+      // Try to update on server first
+      const response = await fetch('/api/admin/update-membership', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'admin-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          membershipType: newType,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Membership updated on server:', result);
+        
+        // Update local state
+        const updatedUsers = users.map(u => 
+          u.id === userId ? { 
+            ...u, 
+            membershipType: newType,
+            membershipExpiry: newType === 'premium' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined
+          } : u
+        );
+        setUsers(updatedUsers);
+        
+        // Also update localStorage as backup
+        localStorage.setItem('users', JSON.stringify(updatedUsers));
+        
+        alert('Membership updated successfully!');
+      } else {
+        throw new Error('Server update failed');
+      }
+    } catch (error) {
+      console.error('Error updating membership:', error);
+      
+      // Fallback to localStorage only
+      const updatedUsers = users.map(u => 
+        u.id === userId ? { 
+          ...u, 
+          membershipType: newType,
+          membershipExpiry: newType === 'premium' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined
+        } : u
+      );
+      setUsers(updatedUsers);
+      localStorage.setItem('users', JSON.stringify(updatedUsers));
+      
+      alert('Membership updated locally (server update failed)');
+    }
   };
 
   const deleteUser = (userId: string) => {

@@ -132,7 +132,10 @@ export default function PortfolioPage() {
   };
 
   return (
-    <PremiumGuard>
+    <PremiumGuard 
+      useBlurOverlay={true} 
+      blurMessage="Upgrade to access your portfolio analytics and management tools"
+    >
       {isAdmin && <CacheStatus />}
       
       <div className="flex justify-between items-center mb-6">

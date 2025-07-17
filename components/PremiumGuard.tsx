@@ -2,13 +2,21 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../utils/auth';
 import { useSubscription } from '../utils/subscription';
 import { FiStar, FiLock, FiUser, FiCreditCard } from 'react-icons/fi';
+import BlurOverlay from './BlurOverlay';
 
 interface PremiumGuardProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
+  useBlurOverlay?: boolean; // New prop to enable blur overlay instead of full blocking
+  blurMessage?: string;
 }
 
-export default function PremiumGuard({ children, fallback }: PremiumGuardProps) {
+export default function PremiumGuard({ 
+  children, 
+  fallback, 
+  useBlurOverlay = true, // Default to blur overlay
+  blurMessage = "Upgrade to access premium features"
+}: PremiumGuardProps) {
   const { user, isAuthenticated, hasPremiumMembership } = useAuth();
   const { subscriptionDetails } = useSubscription();
   const [showContent, setShowContent] = useState(false);
@@ -41,6 +49,24 @@ export default function PremiumGuard({ children, fallback }: PremiumGuardProps) 
   }
 
   if (!hasPremiumMembership()) {
+    // Use blur overlay if enabled, otherwise use full blocking
+    if (useBlurOverlay) {
+      return (
+        <div className="relative">
+          {children}
+          <BlurOverlay 
+            message={blurMessage}
+            onUpgrade={() => {
+              const event = new CustomEvent('openSubscriptionModal');
+              document.dispatchEvent(event);
+            }}
+            visiblePercent={50} // Show 50% of content
+          />
+        </div>
+      );
+    }
+
+    // Fallback to full blocking for critical features
     return fallback || (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">

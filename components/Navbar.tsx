@@ -193,7 +193,7 @@ export default function Navbar({ isAdmin }: NavbarProps) {
                       >
                         {link.label}
                         {!isPremium && (
-                          <FiStar className="ml-1 h-3 w-3 text-yellow-500" />
+                          <span className="ml-1 text-xs text-blue-600 bg-blue-100 px-1 rounded">Pro</span>
                         )}
                       </button>
                     ) : (
@@ -384,7 +384,7 @@ export default function Navbar({ isAdmin }: NavbarProps) {
                       className="flex items-center justify-between w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                     >
                       <span>{link.label}</span>
-                      {!isPremium && <FiStar className="h-4 w-4 text-yellow-500" />}
+                      {!isPremium && <span className="ml-1 text-xs text-blue-600 bg-blue-100 px-1 rounded">Pro</span>}
                     </button>
                   ) : (
                     <button
