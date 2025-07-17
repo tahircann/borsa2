@@ -246,7 +246,7 @@ export default function PerformancePage() {
       {allocationData && (
         <div className="mb-6">
           <h2 className="text-xl font-bold mb-4">Portfolio Allocation</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Asset Class Chart */}
             {allocationData.assetClass && allocationData.assetClass.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-4">
@@ -274,22 +274,6 @@ export default function PerformancePage() {
                     }))} 
                     totalValue={calculateTotal(allocationData.sector)} 
                     title="Sector" 
-                  />
-                </div>
-              </div>
-            )}
-            
-            {/* Industry Chart */}
-            {allocationData.industry && allocationData.industry.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="h-[300px]">
-                  <AllocationChart 
-                    data={allocationData.industry.map((item, index) => ({
-                      ...item,
-                      color: item.color || ['#bc8f50', '#f0ad4e', '#ceeaff', '#f3f3ab', '#ffea95', '#ff7575', '#ffc8b3', '#9e9e9e'][index % 8]
-                    }))} 
-                    totalValue={calculateTotal(allocationData.industry)} 
-                    title="Industry" 
                   />
                 </div>
               </div>

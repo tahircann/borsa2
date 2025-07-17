@@ -350,13 +350,13 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Sector Allocation Chart */}
+        {/* Holdings Allocation Chart */}
         <div className="mt-6 relative">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden">
             {(!isSubscribed && !subscriptionLoading) && (
-              <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to access sector allocation insights" />
+              <BlurOverlay onUpgrade={() => setShowSubscriptionModal(true)} message="Upgrade to access holdings allocation insights" />
             )}
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Sector Allocation</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Holdings Allocation</h2>
             {loading ? (
               <div className="h-60 flex items-center justify-center">
                 <p>Loading...</p>
@@ -366,12 +366,12 @@ export default function Home() {
                 <AllocationChart 
                   data={allocation.sector} 
                   totalValue={allocation.sector.reduce((sum: number, item: any) => sum + item.value, 0)} 
-                  title="Sector" 
+                  title="Holdings" 
                 />
               </div>
             ) : (
               <div className="h-60 flex items-center justify-center">
-                <p>No sector allocation data available</p>
+                <p>No holdings allocation data available</p>
               </div>
             )}
           </div>

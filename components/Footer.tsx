@@ -39,30 +39,30 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+            <h3 className="text-lg font-semibold mb-4 text-white">Quick Links</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/portfolio" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                <Link href="/portfolio" className="text-gray-300 hover:text-white transition-colors text-sm">
                   Portfolio
                 </Link>
               </li>
               <li>
-                <Link href="/stock-ranks" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                <Link href="/stock-ranks" className="text-gray-300 hover:text-white transition-colors text-sm">
                   Stock Rankings
                 </Link>
               </li>
               <li>
-                <Link href="/performance" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                <Link href="/performance" className="text-gray-300 hover:text-white transition-colors text-sm">
                   Performance
                 </Link>
               </li>
               <li>
-                <Link href="/about" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                <Link href="/about" className="text-gray-300 hover:text-white transition-colors text-sm">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link href="/how-it-works" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                <Link href="/how-it-works" className="text-gray-300 hover:text-white transition-colors text-sm">
                   How It Works
                 </Link>
               </li>
@@ -71,20 +71,20 @@ export default function Footer() {
 
           {/* Legal Pages */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Legal Documents</h3>
+            <h3 className="text-lg font-semibold mb-4 text-white">Legal Documents</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/privacy-policy" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                <Link href="/privacy-policy" className="text-gray-300 hover:text-white transition-colors text-sm">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms-conditions" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                <Link href="/terms-conditions" className="text-gray-300 hover:text-white transition-colors text-sm">
                   Terms & Conditions
                 </Link>
               </li>
               <li>
-                <Link href="/subscription-terms" className="text-gray-300 hover:text-blue-400 transition-colors text-sm">
+                <Link href="/subscription-terms" className="text-gray-300 hover:text-white transition-colors text-sm">
                   Subscription Terms
                 </Link>
               </li>
