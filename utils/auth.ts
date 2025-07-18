@@ -32,6 +32,24 @@ const ADMIN_USERNAME = 'admin';
 // Check if running on client side
 const isBrowser = () => typeof window !== 'undefined';
 
+// Sync user data from database
+const syncUserFromDatabase = async (email: string): Promise<User | null> => {
+  try {
+    const response = await fetch(`/api/user?email=${encodeURIComponent(email)}`);
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        ...data.user,
+        createdAt: new Date(data.user.createdAt),
+        membershipExpiry: data.user.membershipExpiry ? new Date(data.user.membershipExpiry) : undefined
+      };
+    }
+  } catch (error) {
+    console.error('Failed to sync user from database:', error);
+  }
+  return null;
+};
+
 // Simple password hashing function (for demo purposes)
 const hashPassword = (password: string): string => {
   // In a real app, use bcrypt or similar
@@ -454,64 +472,44 @@ export const useAuth = () => {
 
   useEffect(() => {
     if (isBrowser()) {
-      const currentUser = getUser();
-      setUser(currentUser);
-      
-      // Check server membership status if user is logged in
-      if (currentUser && !currentUser.isAdmin) {
-        checkMembershipFromServer(currentUser.email).then(serverMembership => {
-          if (serverMembership.isActive && serverMembership.type === 'premium') {
-            // Update local user data with server membership
-            currentUser.membershipType = 'premium';
-            if (serverMembership.expiry) {
-              currentUser.membershipExpiry = new Date(serverMembership.expiry);
-            }
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            setUser({ ...currentUser });
-            console.log('✅ Synced premium membership from server');
-          } else if (currentUser.membershipType === 'premium' && !serverMembership.isActive) {
-            // Server says no premium, but local says yes - server wins
-            currentUser.membershipType = 'free';
-            currentUser.membershipExpiry = undefined;
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            setUser({ ...currentUser });
-            console.log('⚠️ Premium membership expired - updated from server');
+      const initializeUser = async () => {
+        const currentUser = getUser();
+        
+        if (currentUser) {
+          // Sync user data from database to get latest membership info
+          const syncedUser = await syncUserFromDatabase(currentUser.email);
+          if (syncedUser) {
+            // Update localStorage with synced data
+            localStorage.setItem('currentUser', JSON.stringify(syncedUser));
+            setUser(syncedUser);
+            console.log('✅ User data synced from database:', {
+              email: syncedUser.email,
+              membershipType: syncedUser.membershipType,
+              isPremium: syncedUser.membershipType === 'premium' && (!syncedUser.membershipExpiry || syncedUser.membershipExpiry > new Date())
+            });
+          } else {
+            setUser(currentUser);
           }
-        }).catch(error => {
-          console.error('Failed to sync membership from server:', error);
-        });
-      }
+        }
+        
+        setLoading(false);
+      };
       
-      setLoading(false);
+      initializeUser();
     }
   }, []);
 
   const loginUser = async (credentials: LoginCredentials) => {
     const result = await login(credentials);
     if (result.success && result.user) {
-      setUser(result.user);
+      // Sync latest user data from database
+      const syncedUser = await syncUserFromDatabase(result.user.email);
+      const finalUser = syncedUser || result.user;
       
-      // Check server membership status for non-admin users
-      if (!result.user.isAdmin) {
-        try {
-          const serverMembership = await checkMembershipFromServer(result.user.email);
-          if (serverMembership.isActive && serverMembership.type === 'premium') {
-            // Update user with server membership data
-            result.user.membershipType = 'premium';
-            if (serverMembership.expiry) {
-              result.user.membershipExpiry = new Date(serverMembership.expiry);
-            }
-            localStorage.setItem('currentUser', JSON.stringify(result.user));
-            setUser({ ...result.user });
-            console.log('✅ Synced premium membership from server on login');
-          }
-        } catch (error) {
-          console.error('Failed to sync membership on login:', error);
-        }
-      }
+      setUser(finalUser);
       
       // Trigger a custom event to notify other components
-      window.dispatchEvent(new CustomEvent('authStateChange', { detail: result.user }));
+      window.dispatchEvent(new CustomEvent('authStateChange', { detail: finalUser }));
     }
     return result;
   };
@@ -554,12 +552,27 @@ export const useAuth = () => {
     return success;
   };
 
+  const refreshUserData = async () => {
+    const currentUser = getUser();
+    if (currentUser) {
+      const syncedUser = await syncUserFromDatabase(currentUser.email);
+      if (syncedUser) {
+        localStorage.setItem('currentUser', JSON.stringify(syncedUser));
+        setUser(syncedUser);
+        console.log('✅ User data refreshed from database');
+        return syncedUser;
+      }
+    }
+    return currentUser;
+  };
+
   return {
     user,
     loading,
     register: registerUser,
     login: loginUser,
     logout: logoutUser,
+    refreshUserData,
     isAuthenticated: () => user !== null,
     hasPremiumMembership: () => {
       if (!user) return false;
