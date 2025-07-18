@@ -95,8 +95,11 @@ export default function AdminUsersPage() {
     localStorage.setItem('users', JSON.stringify(updatedUsers));
   };
 
-  const changeMembership = async (userId: string, newType: 'free' | 'premium') => {
+  const changeMembership = async (userId: string, newType: 'free' | 'premium_monthly' | 'premium_yearly') => {
     try {
+      const membershipType: 'free' | 'premium' = newType === 'free' ? 'free' : 'premium';
+      const duration = newType === 'premium_monthly' ? 'monthly' : newType === 'premium_yearly' ? 'yearly' : undefined;
+      
       // Try to update on server first
       const response = await fetch('/api/admin/update-membership', {
         method: 'POST',
@@ -106,7 +109,8 @@ export default function AdminUsersPage() {
         },
         body: JSON.stringify({
           userId,
-          membershipType: newType,
+          membershipType,
+          duration,
         }),
       });
 
@@ -114,12 +118,23 @@ export default function AdminUsersPage() {
         const result = await response.json();
         console.log('Membership updated on server:', result);
         
+        // Calculate expiry date
+        let expiry: Date | undefined;
+        if (membershipType === 'premium' && duration) {
+          expiry = new Date();
+          if (duration === 'monthly') {
+            expiry.setMonth(expiry.getMonth() + 1);
+          } else if (duration === 'yearly') {
+            expiry.setFullYear(expiry.getFullYear() + 1);
+          }
+        }
+        
         // Update local state
         const updatedUsers = users.map(u => 
           u.id === userId ? { 
             ...u, 
-            membershipType: newType,
-            membershipExpiry: newType === 'premium' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined
+            membershipType: membershipType,
+            membershipExpiry: expiry
           } : u
         );
         setUsers(updatedUsers);
@@ -134,12 +149,26 @@ export default function AdminUsersPage() {
     } catch (error) {
       console.error('Error updating membership:', error);
       
+      // Calculate expiry date for fallback
+      const membershipType: 'free' | 'premium' = newType === 'free' ? 'free' : 'premium';
+      const duration = newType === 'premium_monthly' ? 'monthly' : newType === 'premium_yearly' ? 'yearly' : undefined;
+      
+      let expiry: Date | undefined;
+      if (membershipType === 'premium' && duration) {
+        expiry = new Date();
+        if (duration === 'monthly') {
+          expiry.setMonth(expiry.getMonth() + 1);
+        } else if (duration === 'yearly') {
+          expiry.setFullYear(expiry.getFullYear() + 1);
+        }
+      }
+      
       // Fallback to localStorage only
       const updatedUsers = users.map(u => 
         u.id === userId ? { 
           ...u, 
-          membershipType: newType,
-          membershipExpiry: newType === 'premium' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined
+          membershipType: membershipType,
+          membershipExpiry: expiry
         } : u
       );
       setUsers(updatedUsers);
@@ -299,12 +328,17 @@ export default function AdminUsersPage() {
                           <FiShield className="h-4 w-4" />
                         </button>
                         <select
-                          value={user.membershipType}
-                          onChange={(e) => changeMembership(user.id, e.target.value as 'free' | 'premium')}
+                          value={user.membershipType === 'free' ? 'free' : 
+                                user.membershipExpiry ? 
+                                  (Math.abs(user.membershipExpiry.getTime() - new Date().getTime()) > 32 * 24 * 60 * 60 * 1000 ? 'premium_yearly' : 'premium_monthly')
+                                  : 'premium_monthly'
+                          }
+                          onChange={(e) => changeMembership(user.id, e.target.value as 'free' | 'premium_monthly' | 'premium_yearly')}
                           className="text-xs border rounded px-2 py-1"
                         >
                           <option value="free">Free</option>
-                          <option value="premium">Premium</option>
+                          <option value="premium_monthly">Premium (1 Month)</option>
+                          <option value="premium_yearly">Premium (1 Year)</option>
                         </select>
                         <button
                           onClick={() => deleteUser(user.id)}

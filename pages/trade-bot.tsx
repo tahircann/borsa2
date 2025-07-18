@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiSettings, FiPlay, FiPause, FiSquare, FiRefreshCw, FiAlertTriangle, FiCheckCircle, FiDollarSign, FiTrendingUp, FiBarChart, FiActivity, FiShield } from 'react-icons/fi';
+import PremiumGuard from '../components/PremiumGuard';
 
 interface TradeBotConfig {
   accountId: string;
@@ -130,13 +131,17 @@ export default function TradeBotPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Trade Bot</h1>
-            <p className="text-gray-600 mt-2">Automated trading with Interactive Brokers integration</p>
+    <PremiumGuard 
+      useBlurOverlay={true} 
+      blurMessage="Upgrade to access copy trading features and follow professional strategies"
+    >
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Copy Trade</h1>
+              <p className="text-gray-600 mt-2">Follow and copy Esen Global Investment portfolio trades automatically</p>
           </div>
           <div className="flex items-center space-x-4">
             <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg border ${getStatusColor()}`}>
@@ -422,8 +427,9 @@ export default function TradeBotPage() {
               </tbody>
             </table>
           </div>
+          </div>
         </div>
       </div>
-    </div>
+    </PremiumGuard>
   );
 } 

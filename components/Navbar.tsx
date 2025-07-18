@@ -97,15 +97,21 @@ export default function Navbar({ isAdmin }: NavbarProps) {
     { 
       href: '/portfolio', 
       label: language === 'en' ? 'Portfolio' : 'Portföy', 
-      premium: true 
+      premium: false, // Allow access but with blur overlay
+      showWithBlur: true
     },
     { 
       href: '/stock-ranks', 
       label: language === 'en' ? 'Stock Rankings' : 'Hisse Sıralaması', 
-      premium: true 
+      premium: false, // Allow access but with blur overlay
+      showWithBlur: true
     },
     // { href: '/trades', label: 'Trade History', premium: false }, // Removed transaction history
-    // { href: '/trade-bot', label: 'Trade Bot', premium: false }, // Deactivated trade bot
+    { 
+      href: '/trade-bot', 
+      label: language === 'en' ? 'Copy Trade' : 'Kopya İşlem', 
+      premium: true 
+    },
     { 
       href: '/performance', 
       label: language === 'en' ? 'Performance' : 'Performans', 

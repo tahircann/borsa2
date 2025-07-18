@@ -27,6 +27,23 @@ export default function PremiumGuard({
   }, [user, isAuthenticated, hasPremiumMembership]);
 
   if (!isAuthenticated()) {
+    // Show blur overlay for non-logged-in users instead of login prompt
+    if (useBlurOverlay) {
+      return (
+        <div className="relative">
+          {children}
+          <BlurOverlay 
+            message="Login and upgrade to access premium features"
+            onUpgrade={() => {
+              const event = new CustomEvent('openLoginModal');
+              document.dispatchEvent(event);
+            }}
+            visiblePercent={25} // Show 25% of content (75% blurred)
+          />
+        </div>
+      );
+    }
+    
     return fallback || (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
@@ -60,7 +77,7 @@ export default function PremiumGuard({
               const event = new CustomEvent('openSubscriptionModal');
               document.dispatchEvent(event);
             }}
-            visiblePercent={50} // Show 50% of content
+            visiblePercent={25} // Show 25% of content (75% blurred)
           />
         </div>
       );

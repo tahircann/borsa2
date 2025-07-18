@@ -72,8 +72,8 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
               onClick={() => setSelectedPlan(plan.id)}
             >
               {plan.popular && (
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="bg-primary-500 text-white text-xs px-3 py-1 rounded-full font-medium">
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                  <div className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium shadow-lg">
                     Most Popular
                   </div>
                 </div>

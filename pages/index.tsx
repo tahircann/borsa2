@@ -107,15 +107,15 @@ export default function Home() {
         </div>
         
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48 flex flex-col items-center justify-center text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white drop-shadow-lg">
-            Unlock <span className="border-b-4 border-blue-400 pb-2 text-white">Financial Insights</span> with 
-            <span className="text-blue-300"> ESEN GLOBAL</span> INVESTMENT
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-white drop-shadow-lg leading-tight">
+            Unlock <span className="text-blue-300 border-b-4 border-blue-400 pb-2">Financial Insights</span> with<br />
+            <span className="text-blue-300">ESEN GLOBAL</span> INVESTMENT
           </h1>
           
           <p className="text-xl md:text-2xl max-w-3xl mx-auto font-light text-gray-100 leading-relaxed mb-12 drop-shadow-md">
-            Follow Esen Global Investment and portfolio performance in real-time. Subscribe now to gain
-            access to investment and trade strategies and learn how navigate the market. Start
-            your journey towards financial literacy today!
+            Discover the professional portfolio strategies of Esen Global Investment. Access real-time market data, 
+            expert stock rankings, and sophisticated investment analytics. Learn from professional trading decisions 
+            and gain insights into institutional-level portfolio management techniques.
           </p>
           
           {/* Email signup form */}
