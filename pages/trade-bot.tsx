@@ -43,6 +43,47 @@ export default function TradeBotPage() {
   const [winRate, setWinRate] = useState(0);
   const [showConfig, setShowConfig] = useState(false);
 
+  // Check connection to Interactive Brokers API
+  const checkConnection = async () => {
+    setConnectionStatus('connecting');
+    try {
+      // Try to connect to the actual IB API endpoint
+      const response = await fetch('/api/proxy/v1/portal/account', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.accounts && data.accounts.length > 0) {
+          setConnectionStatus('connected');
+          console.log('✅ Connected to Interactive Brokers API');
+        } else {
+          setConnectionStatus('error');
+          console.log('❌ IB API responded but no accounts found');
+        }
+      } else {
+        setConnectionStatus('error');
+        console.log('❌ Failed to connect to IB API:', response.status);
+      }
+    } catch (error) {
+      setConnectionStatus('error');
+      console.log('❌ Connection error:', error);
+    }
+  };
+
+  // Check connection on component mount
+  useEffect(() => {
+    checkConnection();
+    
+    // Set up periodic connection check every 30 seconds
+    const interval = setInterval(checkConnection, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Mock data for demonstration
   useEffect(() => {
     const mockOrders: TradeOrder[] = [
@@ -146,8 +187,22 @@ export default function TradeBotPage() {
           <div className="flex items-center space-x-4">
             <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg border ${getStatusColor()}`}>
               {getStatusIcon()}
-              <span className="font-medium capitalize">{connectionStatus}</span>
+              <div className="flex flex-col">
+                <span className="font-medium capitalize">{connectionStatus}</span>
+                <span className="text-xs text-gray-500">
+                  {connectionStatus === 'connected' ? 'IB Gateway Active' : 
+                   connectionStatus === 'connecting' ? 'Connecting to IB...' :
+                   connectionStatus === 'error' ? 'IB Gateway Offline' : 'Not Connected'}
+                </span>
+              </div>
             </div>
+            <button
+              onClick={checkConnection}
+              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <FiRefreshCw className="h-4 w-4" />
+              <span>Refresh</span>
+            </button>
             <button
               onClick={() => setShowConfig(!showConfig)}
               className="flex items-center space-x-2 bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"

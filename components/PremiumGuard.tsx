@@ -9,13 +9,15 @@ interface PremiumGuardProps {
   fallback?: React.ReactNode;
   useBlurOverlay?: boolean; // New prop to enable blur overlay instead of full blocking
   blurMessage?: string;
+  fullPageBlur?: boolean; // New prop for full page blur
 }
 
 export default function PremiumGuard({ 
   children, 
   fallback, 
   useBlurOverlay = true, // Default to blur overlay
-  blurMessage = "Upgrade to access premium features"
+  blurMessage = "Upgrade to access premium features",
+  fullPageBlur = false
 }: PremiumGuardProps) {
   const { user, isAuthenticated, hasPremiumMembership } = useAuth();
   const { subscriptionDetails } = useSubscription();
@@ -39,6 +41,7 @@ export default function PremiumGuard({
               document.dispatchEvent(event);
             }}
             visiblePercent={15} // Show only 15% of content (85% blurred)
+            fullPageBlur={fullPageBlur}
           />
         </div>
       );
@@ -78,6 +81,7 @@ export default function PremiumGuard({
               document.dispatchEvent(event);
             }}
             visiblePercent={15} // Show only 15% of content (85% blurred)
+            fullPageBlur={fullPageBlur}
           />
         </div>
       );

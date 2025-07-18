@@ -7,13 +7,15 @@ type BlurOverlayProps = {
   onUpgrade?: () => void;
   children?: ReactNode;
   visiblePercent?: number;
+  fullPageBlur?: boolean; // New prop for full page blur
 };
 
 export default function BlurOverlay({ 
   message = 'Subscribe to see full content',
   onUpgrade, 
   children,
-  visiblePercent = 15 // Show only 15% of content by default (85% blurred)
+  visiblePercent = 15, // Show only 15% of content by default (85% blurred)
+  fullPageBlur = false
 }: BlurOverlayProps) {
   const { subscribe, isSubscribed } = useSubscription();
   const [contentHeight, setContentHeight] = useState(0);
@@ -38,7 +40,40 @@ export default function BlurOverlay({
     return <>{children}</>;
   }
   
-  // Calculate visible height - show only small portion at the top
+  // Full page blur mode - covers entire viewport
+  if (fullPageBlur) {
+    return (
+      <div className="relative min-h-screen">
+        {/* Content with heavy blur */}
+        <div className="filter blur-md opacity-30">
+          {children}
+        </div>
+        
+        {/* Full page overlay */}
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md mx-4 text-center">
+            <div className="mb-6">
+              <div className="inline-flex items-center justify-center rounded-full bg-blue-100 p-3 mx-auto mb-4">
+                <FiLock className="h-8 w-8 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Premium Content</h2>
+              <p className="text-gray-600">{message}</p>
+            </div>
+            
+            <button 
+              className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              onClick={handleUpgrade}
+            >
+              <FiCreditCard className="mr-2 h-5 w-5" />
+              Upgrade to Premium
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Original partial blur mode
   const visibleHeight = Math.min(contentHeight * (visiblePercent / 100), 300); // Max 300px visible
   
   return (
