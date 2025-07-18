@@ -38,7 +38,7 @@ export default function PremiumGuard({
               const event = new CustomEvent('openLoginModal');
               document.dispatchEvent(event);
             }}
-            visiblePercent={25} // Show 25% of content (75% blurred)
+            visiblePercent={15} // Show only 15% of content (85% blurred)
           />
         </div>
       );
@@ -77,7 +77,7 @@ export default function PremiumGuard({
               const event = new CustomEvent('openSubscriptionModal');
               document.dispatchEvent(event);
             }}
-            visiblePercent={25} // Show 25% of content (75% blurred)
+            visiblePercent={15} // Show only 15% of content (85% blurred)
           />
         </div>
       );

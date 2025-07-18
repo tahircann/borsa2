@@ -13,7 +13,7 @@ export default function BlurOverlay({
   message = 'Subscribe to see full content',
   onUpgrade, 
   children,
-  visiblePercent = 20
+  visiblePercent = 15 // Show only 15% of content by default (85% blurred)
 }: BlurOverlayProps) {
   const { subscribe, isSubscribed } = useSubscription();
   const [contentHeight, setContentHeight] = useState(0);
@@ -38,8 +38,8 @@ export default function BlurOverlay({
     return <>{children}</>;
   }
   
-  // Calculate visible height (20% of content)
-  const visibleHeight = contentHeight * (visiblePercent / 100);
+  // Calculate visible height - show only small portion at the top
+  const visibleHeight = Math.min(contentHeight * (visiblePercent / 100), 300); // Max 300px visible
   
   return (
     <div className="relative">
@@ -47,13 +47,19 @@ export default function BlurOverlay({
       <div
         ref={setContainerRef} 
         className="relative overflow-hidden"
-        style={{ maxHeight: visibleHeight > 0 ? `${visibleHeight}px` : undefined }}
+        style={{ 
+          maxHeight: visibleHeight > 0 ? `${visibleHeight}px` : '200px' // Default to 200px if no content height
+        }}
       >
-        {children}
+        {/* Content with blur filter applied */}
+        <div className="filter blur-sm">
+          {children}
+        </div>
       </div>
       
-      {/* Gradient overlay */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-white to-transparent z-10"></div>
+      {/* Strong gradient overlay that covers most of the visible area */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/60 to-white z-10"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent z-20"></div>
       
       {/* Subscription CTA */}
       <div className="py-8 text-center">
