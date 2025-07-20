@@ -43,7 +43,10 @@ export default function BlurOverlay({
   }
   
   // Calculate visible height - show only small portion at the top
-  const visibleHeight = Math.min(contentHeight * (visiblePercent / 100), 300); // Max 300px visible
+  const visibleHeight = Math.max(
+    Math.min(contentHeight * (visiblePercent / 100), 500), // Max 500px visible
+    200 // Minimum 200px visible even if content is small
+  );
   
   return (
     <div className="relative">
@@ -52,18 +55,18 @@ export default function BlurOverlay({
         ref={setContainerRef} 
         className="relative overflow-hidden"
         style={{ 
-          maxHeight: visibleHeight > 0 ? `${visibleHeight}px` : '200px' // Default to 200px if no content height
+          maxHeight: `${visibleHeight}px`
         }}
       >
         {/* Content with blur filter applied */}
-        <div className="filter blur-sm opacity-75">
+        <div className="filter blur-sm opacity-90">
           {children}
         </div>
       </div>
       
-      {/* Strong gradient overlay that covers most of the visible area */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/60 to-white z-10"></div>
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent z-20"></div>
+      {/* Lighter gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/30 to-white/80 z-10"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent z-20"></div>
       
       {/* Subscription CTA */}
       <div className="py-8 text-center bg-white">
