@@ -109,39 +109,39 @@ export default function Home() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-white drop-shadow-lg leading-tight">
-              Professional <span className="text-blue-300 relative">
-                Portfolio Analysis
+              Reach Your Financial Goals Faster - <span className="text-blue-300 relative">
+                Up to 25% Returns
                 <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-full h-1 bg-blue-400"></span>
               </span><br />
-              <span className="text-blue-300">Powered by ESEN GLOBAL</span>
+              with <span className="text-blue-300">Expert Portfolio Management!</span>
             </h1>
             
             <p className="text-xl md:text-2xl max-w-4xl mx-auto font-light text-gray-100 leading-relaxed mb-12 drop-shadow-md">
-              Access institutional-grade portfolio management tools. Get real-time investment insights, 
-              advanced portfolio analytics, and transparent performance tracking backed by expert analysis.
+              Discover a professional real time trading portfolio subscription designed to grow your wealth. 
+              Backed by real-time performance data and full transparency.
             </p>
 
-            {/* Key Features Grid */}
+            {/* Key Benefits Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 max-w-6xl mx-auto">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-                <FiPieChart className="h-8 w-8 text-blue-300 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Portfolio Analytics</h3>
-                <p className="text-sm text-gray-200">Advanced portfolio analysis and risk assessment</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
                 <FiBarChart2 className="h-8 w-8 text-blue-300 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Real-time Tracking</h3>
-                <p className="text-sm text-gray-200">Live performance data and market insights</p>
+                <h3 className="font-semibold text-white mb-2">Verified Performance</h3>
+                <p className="text-sm text-gray-200">Verified and transparent performance tracking</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
                 <FiTrendingUp className="h-8 w-8 text-blue-300 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">Expert Rankings</h3>
-                <p className="text-sm text-gray-200">Professional stock analysis and ratings</p>
+                <h3 className="font-semibold text-white mb-2">Real-time Insights</h3>
+                <p className="text-sm text-gray-200">Real-time investment insights</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+                <FiPieChart className="h-8 w-8 text-blue-300 mx-auto mb-3" />
+                <h3 className="font-semibold text-white mb-2">Expert Management</h3>
+                <p className="text-sm text-gray-200">Managed by experienced portfolio experts</p>
               </div>
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
                 <FiDollarSign className="h-8 w-8 text-blue-300 mx-auto mb-3" />
-                <h3 className="font-semibold text-white mb-2">GIPS Compliant</h3>
-                <p className="text-sm text-gray-200">Industry-standard performance reporting</p>
+                <h3 className="font-semibold text-white mb-2">Easy Subscription</h3>
+                <p className="text-sm text-gray-200">Easy subscription model for streamlined investing</p>
               </div>
             </div>
             
@@ -156,6 +156,14 @@ export default function Home() {
                   Please contact support: <a href="mailto:esenglobal@gmail.com" className="text-blue-300 underline hover:text-blue-200">esenglobal@gmail.com</a>
                 </p>
               </div>
+              
+              <button 
+                onClick={() => setShowSubscriptionModal(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 py-4 px-8 rounded-lg font-semibold transition-all duration-200 text-white flex items-center justify-center gap-2 shadow-lg"
+              >
+                <FiCreditCard className="h-5 w-5" />
+                Subscribe Now - Let Your Investments Work Smarter!
+              </button>
               
               <Link 
                 href="/portfolio"
