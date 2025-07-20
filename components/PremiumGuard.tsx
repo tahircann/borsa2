@@ -3,6 +3,7 @@ import { useAuth } from '../utils/auth';
 import { useSubscription } from '../utils/subscription';
 import { FiStar, FiLock, FiUser, FiCreditCard, FiArrowLeft } from 'react-icons/fi';
 import { useRouter } from 'next/router';
+import BlurOverlay from './BlurOverlay';
 
 interface PremiumGuardProps {
   children: React.ReactNode;
@@ -43,50 +44,13 @@ export default function PremiumGuard({
   if (!isAuthenticated()) {
     if (useBlurOverlay) {
       return (
-        <div className="relative min-h-screen">
-          {/* Show partial content with blur */}
-          <div className="relative">
-            <div 
-              className="filter blur-sm pointer-events-none select-none"
-              style={{ 
-                maxHeight: '300px',
-                overflow: 'hidden'
-              }}
-            >
-              {children}
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/80 to-white"></div>
-          </div>
-
-          {/* Login prompt */}
-          <div className="bg-white py-12 px-6 text-center">
-            <div className="max-w-md mx-auto">
-              <div className="inline-flex items-center justify-center rounded-full bg-blue-100 p-3 mx-auto mb-4">
-                <FiUser className="h-6 w-6 text-blue-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Login Required</h2>
-              <p className="text-gray-600 mb-6">Please log in to access this feature.</p>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={handleLogin}
-                  className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  <FiUser className="mr-2 h-5 w-5" />
-                  Log In
-                </button>
-                
-                <button 
-                  onClick={handleGoBack}
-                  className="w-full flex items-center justify-center px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                >
-                  <FiArrowLeft className="mr-2 h-4 w-4" />
-                  Go Back
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <BlurOverlay 
+          message="Log in to access full content and premium features"
+          onUpgrade={handleLogin}
+          visiblePercent={25}
+        >
+          {children}
+        </BlurOverlay>
       );
     }
     

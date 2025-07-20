@@ -1,7 +1,8 @@
-import { FiLock, FiCreditCard, FiArrowLeft } from 'react-icons/fi';
+import { FiLock, FiCreditCard, FiArrowLeft, FiUser } from 'react-icons/fi';
 import { ReactNode, useState, useEffect } from 'react';
 import { useSubscription } from '../utils/subscription';
 import { useRouter } from 'next/router';
+import { useAuth } from '../utils/auth';
 
 type BlurOverlayProps = {
   message?: string;
@@ -17,6 +18,7 @@ export default function BlurOverlay({
   visiblePercent = 15 // Show only 15% of content by default (85% blurred)
 }: BlurOverlayProps) {
   const { subscribe, isSubscribed } = useSubscription();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [contentHeight, setContentHeight] = useState(0);
   const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
@@ -73,20 +75,44 @@ export default function BlurOverlay({
         <h3 className="text-lg font-semibold mb-2">Premium Content</h3>
         <p className="text-gray-600 mb-4">{message}</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button 
-            className="flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            onClick={handleUpgrade}
-          >
-            <FiCreditCard className="mr-2 h-4 w-4" />
-            Subscribe Now
-          </button>
-          <button 
-            className="flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-            onClick={() => router.back()}
-          >
-            <FiArrowLeft className="mr-2 h-4 w-4" />
-            Go Back
-          </button>
+          {!isAuthenticated() ? (
+            <>
+              <button 
+                className="flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                onClick={onUpgrade || (() => {
+                  const event = new CustomEvent('openLoginModal');
+                  document.dispatchEvent(event);
+                })}
+              >
+                <FiUser className="mr-2 h-4 w-4" />
+                Log In
+              </button>
+              <button 
+                className="flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                onClick={() => router.back()}
+              >
+                <FiArrowLeft className="mr-2 h-4 w-4" />
+                Go Back
+              </button>
+            </>
+          ) : (
+            <>
+              <button 
+                className="flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                onClick={handleUpgrade}
+              >
+                <FiCreditCard className="mr-2 h-4 w-4" />
+                Subscribe Now
+              </button>
+              <button 
+                className="flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                onClick={() => router.back()}
+              >
+                <FiArrowLeft className="mr-2 h-4 w-4" />
+                Go Back
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
