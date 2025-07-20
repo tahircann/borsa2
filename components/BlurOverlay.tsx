@@ -58,15 +58,15 @@ export default function BlurOverlay({
           maxHeight: `${visibleHeight}px`
         }}
       >
-        {/* Content with blur filter applied */}
-        <div className="filter blur-sm opacity-90">
+        {/* Content with light blur filter applied */}
+        <div className="filter blur-[1px] opacity-95">
           {children}
         </div>
       </div>
       
-      {/* Lighter gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/30 to-white/80 z-10"></div>
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent z-20"></div>
+      {/* Very light gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-white/50 z-10"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent z-20"></div>
       
       {/* Subscription CTA */}
       <div className="py-8 text-center bg-white">
