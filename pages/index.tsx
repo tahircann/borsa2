@@ -103,33 +103,62 @@ export default function Home() {
               filter: 'brightness(0.4)'
             }}
           ></div>
-          <div className="absolute inset-0 bg-black/50"></div> {/* Stronger overlay for better text readability */}
+          <div className="absolute inset-0 bg-black/50"></div>
         </div>
         
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48 flex flex-col items-center justify-center text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-white drop-shadow-lg leading-tight">
-            Unlock <span className="text-blue-300 border-b-4 border-blue-400 pb-2">Financial Insights</span> with<br />
-            <span className="text-blue-300">ESEN GLOBAL</span> INVESTMENT
-          </h1>
-          
-          <p className="text-xl md:text-2xl max-w-3xl mx-auto font-light text-gray-100 leading-relaxed mb-12 drop-shadow-md">
-            Discover the professional portfolio strategies of Esen Global Investment. Access real-time market data, 
-            expert stock rankings, and sophisticated investment analytics. Learn from professional trading decisions 
-            and gain insights into institutional-level portfolio management techniques.
-          </p>
-          
-          {/* Email signup form */}
-          <div className="flex flex-col sm:flex-row w-full max-w-xl mx-auto gap-2">
-            <input 
-              type="email" 
-              placeholder="Enter your email" 
-              className="flex-grow py-3 px-4 rounded-md text-gray-900 border-0 focus:ring-2 focus:ring-blue-500"
-            />
-            <button 
-              onClick={() => setShowSubscriptionModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 py-3 px-6 rounded-md font-medium transition-colors duration-200 text-white">
-              Sign up
-            </button>
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-white drop-shadow-lg leading-tight">
+              Professional <span className="text-blue-300 border-b-4 border-blue-400 pb-2">Portfolio Analysis</span><br />
+              <span className="text-blue-300">Powered by ESEN GLOBAL</span>
+            </h1>
+            
+            <p className="text-xl md:text-2xl max-w-4xl mx-auto font-light text-gray-100 leading-relaxed mb-12 drop-shadow-md">
+              Access institutional-grade portfolio management tools. Get real-time investment insights, 
+              advanced portfolio analytics, and transparent performance tracking backed by expert analysis.
+            </p>
+
+            {/* Key Features Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 max-w-6xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+                <FiPieChart className="h-8 w-8 text-blue-300 mx-auto mb-3" />
+                <h3 className="font-semibold text-white mb-2">Portfolio Analytics</h3>
+                <p className="text-sm text-gray-200">Advanced portfolio analysis and risk assessment</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+                <FiBarChart2 className="h-8 w-8 text-blue-300 mx-auto mb-3" />
+                <h3 className="font-semibold text-white mb-2">Real-time Tracking</h3>
+                <p className="text-sm text-gray-200">Live performance data and market insights</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+                <FiTrendingUp className="h-8 w-8 text-blue-300 mx-auto mb-3" />
+                <h3 className="font-semibold text-white mb-2">Expert Rankings</h3>
+                <p className="text-sm text-gray-200">Professional stock analysis and ratings</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+                <FiDollarSign className="h-8 w-8 text-blue-300 mx-auto mb-3" />
+                <h3 className="font-semibold text-white mb-2">GIPS Compliant</h3>
+                <p className="text-sm text-gray-200">Industry-standard performance reporting</p>
+              </div>
+            </div>
+            
+            {/* Call to Action */}
+            <div className="flex flex-col sm:flex-row w-full max-w-xl mx-auto gap-3">
+              <button 
+                onClick={() => setShowSubscriptionModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 py-4 px-8 rounded-lg font-semibold transition-all duration-200 text-white flex items-center justify-center gap-2 shadow-lg"
+              >
+                <FiArrowRight className="h-5 w-5" />
+                Start Free Analysis
+              </button>
+              <Link 
+                href="/portfolio"
+                className="bg-white/20 hover:bg-white/30 py-4 px-8 rounded-lg font-semibold transition-all duration-200 text-white border border-white/30 flex items-center justify-center gap-2"
+              >
+                <FiExternalLink className="h-5 w-5" />
+                View Demo Portfolio
+              </Link>
+            </div>
           </div>
         </div>
       </div>

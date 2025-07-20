@@ -64,12 +64,12 @@ export default function BlurOverlay({
         </div>
       </div>
       
-      {/* Very light gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-white/50 z-10"></div>
-      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent z-20"></div>
+      {/* Very light gradient overlay - non-interactive */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/10 to-white/50 z-10 pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent z-20 pointer-events-none"></div>
       
-      {/* Subscription CTA */}
-      <div className="py-8 text-center bg-white">
+      {/* Subscription CTA - highest z-index for clickable buttons */}
+      <div className="relative z-30 py-8 text-center bg-white">
         <div className="mb-4">
           <div className="inline-flex items-center justify-center rounded-full bg-blue-100 p-2 mx-auto">
             <FiLock className="h-5 w-5 text-blue-600" />
