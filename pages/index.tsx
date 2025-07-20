@@ -109,7 +109,10 @@ export default function Home() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 text-white drop-shadow-lg leading-tight">
-              Professional <span className="text-blue-300 border-b-4 border-blue-400 pb-2">Portfolio Analysis</span><br />
+              Professional <span className="text-blue-300 relative">
+                Portfolio Analysis
+                <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-full h-1 bg-blue-400"></span>
+              </span><br />
               <span className="text-blue-300">Powered by ESEN GLOBAL</span>
             </h1>
             
@@ -143,17 +146,20 @@ export default function Home() {
             </div>
             
             {/* Call to Action */}
-            <div className="flex flex-col sm:flex-row w-full max-w-xl mx-auto gap-3">
-              <button 
-                onClick={() => setShowSubscriptionModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 py-4 px-8 rounded-lg font-semibold transition-all duration-200 text-white flex items-center justify-center gap-2 shadow-lg"
-              >
-                <FiArrowRight className="h-5 w-5" />
-                Start Free Analysis
-              </button>
+            <div className="flex flex-col items-center w-full max-w-xl mx-auto gap-4">
+              {/* Membership Notice */}
+              <div className="bg-blue-600/20 border border-blue-400/30 rounded-lg p-4 mb-4 text-center">
+                <p className="text-blue-100 text-sm mb-2">
+                  <strong>Notice:</strong> Your membership will be enabled within 24 hours.
+                </p>
+                <p className="text-blue-200 text-xs">
+                  Please contact support: <a href="mailto:esenglobal@gmail.com" className="text-blue-300 underline hover:text-blue-200">esenglobal@gmail.com</a>
+                </p>
+              </div>
+              
               <Link 
                 href="/portfolio"
-                className="bg-white/20 hover:bg-white/30 py-4 px-8 rounded-lg font-semibold transition-all duration-200 text-white border border-white/30 flex items-center justify-center gap-2"
+                className="w-full bg-white/20 hover:bg-white/30 py-4 px-8 rounded-lg font-semibold transition-all duration-200 text-white border border-white/30 flex items-center justify-center gap-2"
               >
                 <FiExternalLink className="h-5 w-5" />
                 View Demo Portfolio
