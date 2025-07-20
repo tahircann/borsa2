@@ -134,7 +134,6 @@ export default function PortfolioPage() {
   return (
     <PremiumGuard 
       useBlurOverlay={true} 
-      fullPageBlur={true}
       blurMessage="Upgrade to access your portfolio analytics and management tools"
     >
       {isAdmin && <CacheStatus />}

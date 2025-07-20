@@ -188,7 +188,6 @@ export default function StockRanks() {
   return (
     <PremiumGuard 
       useBlurOverlay={true} 
-      fullPageBlur={true}
       blurMessage="Upgrade to access advanced stock analysis and rankings"
     >
       <div className="container mx-auto px-4 py-8">
