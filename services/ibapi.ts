@@ -1093,13 +1093,41 @@ export const getPositions = async (): Promise<any> => {
     const cacheResponse = await fetch(`${CACHE_API_URL}?type=positions`);
     if (cacheResponse.ok) {
       const cachedData = await cacheResponse.json();
-      if (cachedData.data) {
+      if (cachedData.data && Array.isArray(cachedData.data)) {
         console.log('✅ Positions data from cache:', {
           lastUpdate: cachedData.lastUpdate,
           status: cachedData.status,
-          positionsCount: Array.isArray(cachedData.data) ? cachedData.data.length : 0
+          positionsCount: cachedData.data.length
         });
-        return cachedData.data;
+        
+        // Transform cached data to match frontend expectations
+        const transformedPositions = cachedData.data.map((pos: any) => {
+          // Calculate percentChange if not provided
+          let percentChange = 0;
+          if (pos.unrealizedPnl && pos.marketValue && pos.avgCost && pos.position) {
+            const costBasis = pos.avgCost * pos.position;
+            if (costBasis !== 0) {
+              percentChange = (pos.unrealizedPnl / costBasis) * 100;
+            }
+          }
+
+          return {
+            symbol: pos.symbol || pos.description || pos.conid || 'Unknown',
+            name: pos.name || pos.description || 'Unknown',
+            quantity: pos.quantity || pos.position || 0,
+            averageCost: pos.averageCost || pos.avgCost || 0,
+            marketValue: pos.marketValue || (pos.marketPrice * pos.position) || 0,
+            unrealizedPnL: pos.unrealizedPnL || pos.unrealizedPnl || 0,
+            percentChange: pos.percentChange || percentChange || 0,
+            // Add additional fields that might be useful
+            sector: pos.sector || null,
+            group: pos.group || null,
+            assetClass: pos.assetClass || null
+          };
+        });
+        
+        console.log(`Transformed ${transformedPositions.length} cached positions`);
+        return transformedPositions;
       }
     }
   } catch (error) {
