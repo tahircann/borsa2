@@ -25,7 +25,7 @@ def parse_web_interface_data(url):
 
 def extract_positions_data():
     """Extract positions data from web interface"""
-    html_content = parse_web_interface_data("http://145.223.80.133:8080/positions")
+    html_content = parse_web_interface_data("http://172.18.0.2:5056/positions")
     if not html_content:
         return []
     
@@ -56,7 +56,7 @@ def extract_summary_data():
     """Extract account summary from web interface"""
     try:
         # Get dashboard content for basic metrics
-        dashboard_content = parse_web_interface_data("http://145.223.80.133:8080/")
+        dashboard_content = parse_web_interface_data("http://172.18.0.2:5056/")
         if not dashboard_content:
             return {}
         
