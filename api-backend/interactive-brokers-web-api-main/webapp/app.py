@@ -17,25 +17,18 @@ def get_base_api_url(request):
     if host == 'localhost' or host == '127.0.0.1':
         return "https://localhost:5055/v1/api"
     else:
-        # Ana uygulama HTTP üzerinde çalışıyorsa, API da HTTP olsun
-        if not request.is_secure:
-            return f"http://{host}:5055/v1/api"
-        else:
-            return f"https://{host}:5055/v1/api"
+        # Production environment - always use HTTPS for IBKR Gateway
+        return f"https://{host}:5055/v1/api"
 
 # Gateway URL'i almak için yardımcı fonksiyon
 def get_gateway_url(request):
     host = request.host.split(':')[0]  # Port'u çıkar
-    scheme = 'https' if request.is_secure else 'http'
     
     if host == 'localhost' or host == '127.0.0.1':
         return "https://localhost:5055"
     else:
-        # Ana uygulama HTTP üzerinde çalışıyorsa, gateway da HTTP olsun
-        if not request.is_secure:
-            return f"http://{host}:5055"
-        else:
-            return f"https://{host}:5055"
+        # Production environment - always use HTTPS for IBKR Gateway
+        return f"https://{host}:5055"
 
 ACCOUNT_ID = os.environ.get('IBKR_ACCOUNT_ID', '')
 
