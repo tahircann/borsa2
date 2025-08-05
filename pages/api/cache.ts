@@ -34,8 +34,8 @@ const fetchFreshData = async (): Promise<any> => {
   console.log('🔄 Fetching fresh data from Flask API...');
   
   const baseUrl = process.env.NODE_ENV === 'production' 
-    ? `http://${process.env.SERVER_HOST || '145.223.80.133'}:8080`
-    : 'http://localhost:8080';
+    ? `http://${process.env.SERVER_HOST || '145.223.80.133'}:8081`
+    : 'http://localhost:8081';
 
   try {
     // Fetch all data in parallel with longer timeout
