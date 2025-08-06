@@ -201,6 +201,9 @@ export default function PortfolioPage() {
                     <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                   )}
                 </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Allocation %
+                </th>
                 <th
                   className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                   onClick={() => handleSort('unrealizedPnL')}
@@ -236,13 +239,13 @@ export default function PortfolioPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={11} className="px-6 py-4 text-center text-sm text-gray-500">
                     Loading...
                   </td>
                 </tr>
               ) : sortedPositions.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={11} className="px-6 py-4 text-center text-sm text-gray-500">
                     No positions found
                   </td>
                 </tr>
@@ -270,6 +273,12 @@ export default function PortfolioPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                       {formatCurrency(position.marketValue)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                      {portfolio && portfolio.totalValue > 0 
+                        ? ((position.marketValue / portfolio.totalValue) * 100).toFixed(2) + '%'
+                        : '-'
+                      }
                     </td>
                     <td
                       className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${
