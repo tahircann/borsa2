@@ -49,12 +49,17 @@ export default function StockRanks() {
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [editingStock, setEditingStock] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { isSubscribed } = useSubscription();
   const { user } = useAuth();
   
-  // Admin kontrolü yeni auth sisteminden
-  const isAdmin = user?.isAdmin || false;
+  // Handle admin state and mounting to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+    setIsAdmin(user?.isAdmin || false);
+  }, [user]);
 
   // Fetch portfolio data and convert to stock format
   useEffect(() => {
@@ -65,7 +70,7 @@ export default function StockRanks() {
     setRefreshInterval(interval);
     
     return () => {
-      if (refreshInterval) clearInterval(refreshInterval);
+      clearInterval(interval);
     };
   }, []);
 
@@ -246,7 +251,7 @@ export default function StockRanks() {
               <FiFilter className="mr-2 h-4 w-4" />
               Filter
             </button>
-            {isAdmin && (
+            {mounted && isAdmin && (
               <button 
                 onClick={() => setShowAdminPanel(!showAdminPanel)}
                 className="flex items-center bg-blue-50 border border-blue-200 text-blue-700 rounded-md py-2 px-4 text-sm hover:bg-blue-100 transition-colors"
@@ -287,7 +292,7 @@ export default function StockRanks() {
         )}
 
         {/* Admin Panel */}
-        {showAdminPanel && isAdmin && (
+        {mounted && showAdminPanel && isAdmin && (
           <div className="bg-blue-50 rounded-lg shadow-md p-4 mb-6 border border-blue-200">
             <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
               <FiSettings className="mr-2" />
