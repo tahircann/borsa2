@@ -5,16 +5,46 @@ import PremiumGuard from '../components/PremiumGuard';
 import { useSubscription } from '../utils/subscription';
 import { useAuth } from '../utils/auth';
 import USStockChart from '../components/USStockChart';
-import { alphaVantageAPI, USStockData } from '../services/alphaVantageApi';
+import { getPortfolio, type Portfolio, type Position } from '../services/ibapi';
+
+// Convert Portfolio Position to Stock data format
+interface StockData {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume?: number;
+  marketCap?: number;
+  pe?: number;
+  dividendYield?: number;
+  averageCost?: number;
+  quantity?: number;
+  marketValue?: number;
+  unrealizedPnL?: number;
+  country?: string;
+  // Additional fields for compatibility and editing
+  company?: string;
+  timestamp?: string;
+  stockScore?: number;
+  quarterRevenueEarning?: string;
+  annualRevenueEarning?: string;
+  growth?: string;
+  valuation?: string;
+  techAnalysis?: string;
+  seasonality?: string;
+  analysisPriceTarget?: string;
+  upsidePotential?: string;
+}
 
 export default function StockRanks() {
   const [sortColumn, setSortColumn] = useState<string>('changePercent');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [stocks, setStocks] = useState<USStockData[]>([]);
+  const [stocks, setStocks] = useState<StockData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedStock, setSelectedStock] = useState<USStockData | null>(null);
+  const [selectedStock, setSelectedStock] = useState<StockData | null>(null);
   const [showChart, setShowChart] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -26,7 +56,7 @@ export default function StockRanks() {
   // Admin kontrolü yeni auth sisteminden
   const isAdmin = user?.isAdmin || false;
 
-  // Fetch US stock data
+  // Fetch portfolio data and convert to stock format
   useEffect(() => {
     loadStockData();
     
@@ -44,28 +74,32 @@ export default function StockRanks() {
       setLoading(true);
       setError('');
       
-      // Try to get real data first, fallback to mock data
-      let stockData: USStockData[] = [];
+      // Get portfolio data
+      const portfolio = await getPortfolio();
       
-      try {
-        stockData = await alphaVantageAPI.getPopularStocks();
-        
-        // If no data or limited data, supplement with mock data
-        if (stockData.length < 5) {
-          const mockData = alphaVantageAPI.getMockStockData();
-          stockData = [...stockData, ...mockData.slice(stockData.length)];
-        }
-      } catch (apiError) {
-        console.warn('API failed, using mock data:', apiError);
-        stockData = alphaVantageAPI.getMockStockData();
-      }
+      // Convert portfolio positions to stock data format
+      const stockData: StockData[] = portfolio.positions.map((position: Position) => ({
+        symbol: position.symbol,
+        name: position.name,
+        price: position.marketValue / position.quantity || 0,
+        change: position.unrealizedPnL,
+        changePercent: position.percentChange,
+        dividendYield: position.dividendYield || 0,
+        averageCost: position.averageCost,
+        quantity: position.quantity,
+        marketValue: position.marketValue,
+        unrealizedPnL: position.unrealizedPnL,
+        country: position.country || 'US',
+        volume: 0, // Not available from portfolio data
+        marketCap: 0, // Not available from portfolio data  
+        pe: 0 // Not available from portfolio data
+      }));
       
-      // İlk 100 veriyi al
-      setStocks(stockData.slice(0, 100));
+      setStocks(stockData);
     } catch (err) {
-      console.error('Error loading stock data:', err);
-      setError('Failed to load stock data. Please try again later.');
-      setStocks(alphaVantageAPI.getMockStockData());
+      console.error('Error loading portfolio data:', err);
+      setError('Failed to load portfolio data. Please try again later.');
+      setStocks([]);
     } finally {
       setLoading(false);
     }
@@ -82,7 +116,7 @@ export default function StockRanks() {
   };
   
   // Handle stock click for chart display
-  const handleStockClick = (stock: USStockData) => {
+  const handleStockClick = (stock: StockData) => {
     setSelectedStock(stock);
     setShowChart(true);
   };
@@ -166,8 +200,8 @@ export default function StockRanks() {
 
   // Sorting logic
   const sortedStocks = [...stocks].sort((a, b) => {
-    const aValue = a[sortColumn as keyof USStockData];
-    const bValue = b[sortColumn as keyof USStockData];
+    const aValue = a[sortColumn as keyof StockData];
+    const bValue = b[sortColumn as keyof StockData];
     
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       return sortDirection === 'asc' 
@@ -503,7 +537,7 @@ export default function StockRanks() {
                         {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        {formatVolume(stock.volume)}
+                        {formatVolume(stock.volume || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                         {formatMarketCap(stock.marketCap)}
@@ -701,11 +735,22 @@ export default function StockRanks() {
 
       {/* Chart Modal */}
       {showChart && selectedStock && (
-        <USStockChart 
-          symbol={selectedStock.symbol}
-          stockData={selectedStock}
-          onClose={closeChart}
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-semibold">{selectedStock.symbol} - {selectedStock.name}</h3>
+              <button
+                onClick={closeChart}
+                className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4">
+              <p>Chart functionality temporarily disabled for portfolio-based stocks</p>
+            </div>
+          </div>
+        </div>
       )}
     </PremiumGuard>
   );
