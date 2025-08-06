@@ -38,7 +38,7 @@ interface StockData {
 }
 
 export default function StockRanks() {
-  const [sortColumn, setSortColumn] = useState<string>('changePercent');
+  const [sortColumn, setSortColumn] = useState<string>('marketValue');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [stocks, setStocks] = useState<StockData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -406,6 +406,15 @@ export default function StockRanks() {
                     )}
                   </th>
                   <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort('marketValue')}
+                  >
+                    Market Value
+                    {sortColumn === 'marketValue' && (
+                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </th>
+                  <th 
                     className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort('stockScore')}
                   >
@@ -494,7 +503,7 @@ export default function StockRanks() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
                   <tr>
-                    <td colSpan={17} className="px-6 py-10 text-center">
+                    <td colSpan={18} className="px-6 py-10 text-center">
                       <div className="flex justify-center items-center">
                         <FiRefreshCw className="animate-spin h-5 w-5 mr-2 text-blue-600" />
                         <span>Loading US stock data...</span>
@@ -503,13 +512,13 @@ export default function StockRanks() {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={17} className="px-6 py-10 text-center text-red-600">
+                    <td colSpan={18} className="px-6 py-10 text-center text-red-600">
                       {error}
                     </td>
                   </tr>
                 ) : sortedStocks.length === 0 ? (
                   <tr>
-                    <td colSpan={17} className="px-6 py-10 text-center">
+                    <td colSpan={18} className="px-6 py-10 text-center">
                       No stock data available.
                     </td>
                   </tr>
@@ -544,6 +553,9 @@ export default function StockRanks() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                         {stock.pe?.toFixed(1) || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                        ${stock.marketValue?.toLocaleString() || 'N/A'}
                       </td>
                       {/* Yeni kolonlar */}
                       <td className="px-6 py-4 whitespace-nowrap text-center">
