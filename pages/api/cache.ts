@@ -31,18 +31,51 @@ const isCacheValid = (lastUpdate: string): boolean => {
 };
 
 const fetchFreshData = async (): Promise<any> => {
-  console.log('🔄 Fetching fresh data from Flask API...');
+  console.log('🔄 Fetching fresh data directly from IBKR Gateway...');
   
+  // Connect directly to IBKR Gateway instead of Flask API
   const baseUrl = process.env.NODE_ENV === 'production' 
-    ? `http://${process.env.SERVER_HOST || '145.223.80.133'}:8081`
-    : 'http://localhost:8081';
+    ? `https://${process.env.SERVER_HOST || '145.223.80.133'}:5055/v1/api`
+    : 'https://localhost:5055/v1/api';
 
   try {
+    // First get accounts to determine which account to use
+    const accountsRes = await axios.get(`${baseUrl}/portfolio/accounts`, { 
+      timeout: 30000,
+      httpsAgent: new (require('https').Agent)({
+        rejectUnauthorized: false
+      })
+    });
+    
+    const accounts = accountsRes.data;
+    if (!accounts || accounts.length === 0) {
+      throw new Error('No accounts found');
+    }
+    
+    // Use the second account if available (U7960949), otherwise first one
+    const accountId = accounts.length > 1 ? accounts[1].accountId : accounts[0].accountId;
+    console.log(`Using account: ${accountId}`);
+    
     // Fetch all data in parallel with longer timeout
     const [summaryRes, positionsRes, allocationRes] = await Promise.all([
-      axios.get(`${baseUrl}/api/summary`, { timeout: 30000 }),
-      axios.get(`${baseUrl}/api/positions`, { timeout: 30000 }),
-      axios.get(`${baseUrl}/api/allocation`, { timeout: 30000 })
+      axios.get(`${baseUrl}/portfolio/${accountId}/summary`, { 
+        timeout: 30000,
+        httpsAgent: new (require('https').Agent)({
+          rejectUnauthorized: false
+        })
+      }),
+      axios.get(`${baseUrl}/portfolio/${accountId}/positions/0`, { 
+        timeout: 30000,
+        httpsAgent: new (require('https').Agent)({
+          rejectUnauthorized: false
+        })
+      }),
+      axios.get(`${baseUrl}/portfolio/${accountId}/allocation`, { 
+        timeout: 30000,
+        httpsAgent: new (require('https').Agent)({
+          rejectUnauthorized: false
+        })
+      })
     ]);
 
     const data: any = {
