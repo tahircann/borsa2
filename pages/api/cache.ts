@@ -132,7 +132,7 @@ const fetchFreshData = async (): Promise<any> => {
         name: pos.name || pos.description || pos.contractDesc || 'Unknown', 
         quantity: Number(pos.position) || 0,
         averageCost: Number(pos.avgCost) || 0,
-        marketValue: Number(pos.marketValue) || 0,
+        marketValue: Number(pos.mktValue) || 0,
         unrealizedPnL: Number(pos.unrealizedPnl) || 0,
         percentChange: 0,
         country: 'US'
