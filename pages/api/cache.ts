@@ -128,8 +128,8 @@ const fetchFreshData = async (): Promise<any> => {
 
       // Process positions
       const positions = Array.isArray(data.positions) ? data.positions.map((pos: any) => ({
-        symbol: pos.description || 'Unknown',
-        name: pos.description || 'Unknown', 
+        symbol: pos.contractDesc || pos.description || 'Unknown',
+        name: pos.name || pos.description || pos.contractDesc || 'Unknown', 
         quantity: Number(pos.position) || 0,
         averageCost: Number(pos.avgCost) || 0,
         marketValue: Number(pos.marketValue) || 0,
