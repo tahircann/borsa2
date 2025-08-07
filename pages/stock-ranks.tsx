@@ -83,10 +83,10 @@ export default function StockRanks() {
       const portfolio = await getPortfolio();
       
       // Convert portfolio positions to stock data format
-      const stockData: StockData[] = portfolio.positions.map((position: Position) => ({
+      const stockData: StockData[] = (portfolio.positions || []).map((position: Position) => ({
         symbol: position.symbol,
         name: position.name,
-        price: position.marketValue / position.quantity || 0,
+        price: position.quantity > 0 ? position.marketValue / position.quantity : 0,
         change: position.unrealizedPnL,
         changePercent: position.percentChange,
         dividendYield: position.dividendYield || 0,

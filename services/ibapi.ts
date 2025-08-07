@@ -337,15 +337,15 @@ export const getPortfolio = async (): Promise<Portfolio> => {
     const cacheResponse = await fetch(`${CACHE_API_URL}?type=portfolio`);
     if (cacheResponse.ok) {
       const cachedData = await cacheResponse.json();
-      if (cachedData.data) {
+      if (cachedData.data && cachedData.data.portfolio) {
         console.log('✅ Portfolio data from cache:', {
           lastUpdate: cachedData.lastUpdate,
           nextUpdate: cachedData.nextUpdate,
           status: cachedData.status,
-          positions: cachedData.data.positions?.length || 0,
-          totalValue: cachedData.data.totalValue
+          positions: cachedData.data.portfolio.positions?.length || 0,
+          totalValue: cachedData.data.portfolio.totalValue
         });
-        return cachedData.data;
+        return cachedData.data.portfolio;
       }
     }
   } catch (error) {
