@@ -148,22 +148,29 @@ const fetchFreshData = async (): Promise<any> => {
       portfolio.totalValue = positions.reduce((sum: number, pos: any) => sum + pos.marketValue, cashValue);
     }
 
-    // Filter out cash from allocation data to show only stock allocations
+    // Convert IBKR allocation format to our expected format
     if (data.allocation) {
-      if (data.allocation.sector) {
-        data.allocation.sector = data.allocation.sector.filter((item: any) => 
-          item.name && item.name.toLowerCase() !== 'cash'
-        );
+      // Convert sector allocation from object to array format
+      if (data.allocation.sector && data.allocation.sector.long) {
+        data.allocation.sector = Object.entries(data.allocation.sector.long).map(([name, value]) => ({
+          name,
+          value: Number(value)
+        })).filter((item: any) => item.name && item.name.toLowerCase() !== 'cash');
+      } else {
+        data.allocation.sector = [];
       }
-      if (data.allocation.industry) {
-        data.allocation.industry = data.allocation.industry.filter((item: any) => 
-          item.name && item.name.toLowerCase() !== 'cash'
-        );
-      }
-      if (data.allocation.assetClass) {
-        data.allocation.assetClass = data.allocation.assetClass.filter((item: any) => 
-          item.name && item.name.toLowerCase() !== 'cash'
-        );
+      
+      // Set industry to empty array since IBKR doesn't provide this breakdown
+      data.allocation.industry = [];
+      
+      // Convert asset class allocation from object to array format
+      if (data.allocation.assetClass && data.allocation.assetClass.long) {
+        data.allocation.assetClass = Object.entries(data.allocation.assetClass.long).map(([name, value]) => ({
+          name,
+          value: Number(value)
+        })).filter((item: any) => item.name && item.name.toLowerCase() !== 'cash');
+      } else {
+        data.allocation.assetClass = [];
       }
     }
 
