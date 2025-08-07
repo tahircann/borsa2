@@ -332,13 +332,54 @@ const mockPortfolio: Portfolio = {
 
 // Portföy verisi alma
 export const getPortfolio = async (): Promise<Portfolio> => {
-  // First try to get from cache
+  console.log('🚀 Fetching portfolio data from Flask API (port 8080)...');
+  
+  // Use Flask API on port 8080 directly
+  try {
+    const flaskResponse = await fetch('/api/proxy?target=flask&path=api/positions');
+    if (flaskResponse.ok) {
+      const positions = await flaskResponse.json();
+      console.log('✅ Portfolio data from Flask API:', {
+        positions: positions?.length || 0,
+        source: 'localhost:8080/api/positions'
+      });
+
+      // Convert Flask API format to our Portfolio format
+      const convertedPositions = positions.map((pos: any) => ({
+        symbol: pos.description || pos.symbol,
+        name: pos.description || pos.symbol,
+        quantity: pos.position || 0,
+        marketValue: pos.marketValue || 0,
+        unrealizedPnL: pos.unrealizedPnl || 0,
+        averageCost: pos.avgCost || pos.avgPrice || 0,
+        marketPrice: pos.marketPrice || 0,
+        percentChange: pos.marketValue && pos.avgCost ? 
+          ((pos.marketPrice - pos.avgCost) / pos.avgCost) * 100 : 0,
+        country: 'US',
+        sector: pos.sector || pos.group || 'Unknown',
+        currency: pos.currency || 'USD'
+      }));
+
+      // Calculate total portfolio value
+      const totalValue = convertedPositions.reduce((sum: number, pos: any) => sum + (pos.marketValue || 0), 0);
+
+      return {
+        positions: convertedPositions,
+        totalValue: totalValue,
+        cash: 0 // Not available from Flask API
+      };
+    }
+  } catch (error) {
+    console.error('❌ Flask API error:', error);
+  }
+
+  // Fallback: First try to get from cache
   try {
     const cacheResponse = await fetch(`${CACHE_API_URL}?type=portfolio`);
     if (cacheResponse.ok) {
       const cachedData = await cacheResponse.json();
       if (cachedData.data && cachedData.data.portfolio) {
-        console.log('✅ Portfolio data from cache:', {
+        console.log('✅ Portfolio data from cache (fallback):', {
           lastUpdate: cachedData.lastUpdate,
           nextUpdate: cachedData.nextUpdate,
           status: cachedData.status,
@@ -349,7 +390,7 @@ export const getPortfolio = async (): Promise<Portfolio> => {
       }
     }
   } catch (error) {
-    console.log('⚠️ Cache unavailable, fetching from API:', error);
+    console.log('⚠️ Cache unavailable, fetching from IBKR API:', error);
   }
 
   try {
