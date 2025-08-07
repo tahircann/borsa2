@@ -50,10 +50,15 @@ const fetchFreshData = async (): Promise<any> => {
       throw new Error('No accounts found');
     }
     
-    // Find the trading account (U followed by numbers)
-    const tradingAccount = accountsData.accounts.find((acc: string) => 
-      acc.startsWith('U') && acc.length > 1 && /^\d+$/.test(acc.slice(1))
-    );
+    // Find the correct trading account - prefer U7960949 which has positions
+    let tradingAccount = accountsData.accounts.find((acc: string) => acc === 'U7960949');
+    
+    // If U7960949 not found, fall back to any trading account
+    if (!tradingAccount) {
+      tradingAccount = accountsData.accounts.find((acc: string) => 
+        acc.startsWith('U') && acc.length > 1 && /^\d+$/.test(acc.slice(1))
+      );
+    }
     
     if (!tradingAccount) {
       throw new Error('No trading account found');
