@@ -33,44 +33,49 @@ const isCacheValid = (lastUpdate: string): boolean => {
 const fetchFreshData = async (): Promise<any> => {
   console.log('🔄 Fetching fresh data directly from IBKR Gateway...');
   
-  // Connect directly to IBKR Gateway instead of Flask API
-  const baseUrl = process.env.NODE_ENV === 'production' 
-    ? `https://${process.env.SERVER_HOST || '145.223.80.133'}:5055/v1/api`
-    : 'https://localhost:5055/v1/api';
+  // Connect directly to IBKR Gateway using localhost to avoid external access issues
+  const baseUrl = 'https://localhost:5055/v1/api';
 
   try {
-    // First get accounts to determine which account to use
-    const accountsRes = await axios.get(`${baseUrl}/portfolio/accounts`, { 
+    // First get accounts using the working iserver endpoint
+    const accountsRes = await axios.get(`${baseUrl}/iserver/accounts`, { 
       timeout: 30000,
       httpsAgent: new (require('https').Agent)({
         rejectUnauthorized: false
       })
     });
     
-    const accounts = accountsRes.data;
-    if (!accounts || accounts.length === 0) {
+    const accountsData = accountsRes.data;
+    if (!accountsData || !accountsData.accounts || accountsData.accounts.length === 0) {
       throw new Error('No accounts found');
     }
     
-    // Use the second account if available (U7960949), otherwise first one
-    const accountId = accounts.length > 1 ? accounts[1].accountId : accounts[0].accountId;
-    console.log(`Using account: ${accountId}`);
+    // Find the trading account (U followed by numbers)
+    const tradingAccount = accountsData.accounts.find((acc: string) => 
+      acc.startsWith('U') && acc.length > 1 && /^\d+$/.test(acc.slice(1))
+    );
+    
+    if (!tradingAccount) {
+      throw new Error('No trading account found');
+    }
+    
+    console.log(`Using account: ${tradingAccount}`);
     
     // Fetch all data in parallel with longer timeout
     const [summaryRes, positionsRes, allocationRes] = await Promise.all([
-      axios.get(`${baseUrl}/portfolio/${accountId}/summary`, { 
+      axios.get(`${baseUrl}/portfolio/${tradingAccount}/summary`, { 
         timeout: 30000,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: false
         })
       }),
-      axios.get(`${baseUrl}/portfolio/${accountId}/positions/0`, { 
+      axios.get(`${baseUrl}/portfolio/${tradingAccount}/positions/0`, { 
         timeout: 30000,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: false
         })
       }),
-      axios.get(`${baseUrl}/portfolio/${accountId}/allocation`, { 
+      axios.get(`${baseUrl}/portfolio/${tradingAccount}/allocation`, { 
         timeout: 30000,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: false
